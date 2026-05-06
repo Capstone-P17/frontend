@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+from urllib.parse import quote_plus
 
 _BASE_CSS = """
     header[data-testid="stHeader"] { display: none !important; }
@@ -59,7 +60,13 @@ _SIDEBAR_CSS = """
     background-color: #222831; border-right: 1px solid rgba(238,238,238,0.25);
     z-index: 99999; display: flex; flex-direction: column;
     padding: 24px 16px 20px 16px; box-sizing: border-box;
-    transition: transform 0.25s ease;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+#p17-sidebar-toggle { display: none; }
+#p17-sidebar-toggle:checked + .p17-sidebar {
+    transform: translateX(-280px);
+    opacity: 0;
+    pointer-events: none;
 }
 .p17-sidebar-header {
     display: flex; justify-content: space-between; align-items: center;
@@ -140,10 +147,7 @@ _FOOTER_HTML = """
 def _navbar_right_html(logged_in: bool, user_id: str) -> str:
     if logged_in:
         return f'<span style="color:#EEEEEE; font-size:0.95rem;">{user_id}</span>'
-    return (
-        '<a href="/signin" target="_self">회원가입</a>'
-        '<a class="navbar-login" href="/login" target="_self">로그인</a>'
-    )
+    return '<a class="navbar-login" href="/?page=login" target="_self">로그인</a>'
 
 
 def render_header(logged_in: bool, user_id: str, extra_css: str = "", hamburger: bool = False):
@@ -156,7 +160,6 @@ def render_header(logged_in: bool, user_id: str, extra_css: str = "", hamburger:
         f'  {ham}'
         f'  <a class="navbar-logo" href="/" target="_self">P17</a>'
         f'  <a href="#">팀 소개</a>'
-        f'  <a href="#">보관소</a>'
         f'  <div class="navbar-right">{right}</div>'
         f'</div>',
         unsafe_allow_html=True,
@@ -180,52 +183,56 @@ def render_footer():
 
 
 def render_sidebar(repo_url: str, user_id: str, active: str):
-    dash_cls = "active" if active == "dashboard" else ""
-    anal_cls = "active" if active == "analysis" else ""
-    hidden   = "transform:translateX(-260px);" if active != "dashboard" else ""
+    nav_items = [
+        ("메인페이지", "/", "main"),
+        ("대시보드", "dashboard", "dashboard"),
+        ("상세 분석", "analysis", "analysis"),
+    ]
+    repo_param = f"repo={quote_plus(repo_url)}" if repo_url else ""
+
+    nav_links = ""
+    for label, path, key in nav_items:
+        active_class = "active" if active == key else ""
+        if key == "main":
+            href = f"/?{repo_param}" if repo_param else "/"
+        else:
+            href = f"/?page={path}&{repo_param}" if repo_param else f"/?page={path}"
+        nav_links += (
+            f'<a class="p17-nav-btn {active_class}" '
+            f'href="{href}" target="_self">{label}</a>'
+        )
 
     st.markdown(
         f"<style>{_SIDEBAR_CSS}</style>"
-        f'<div class="p17-sidebar" id="p17-sidebar" style="{hidden}">'
+        f'<div class="p17-sidebar" id="p17-sidebar">'
         f'  <div class="p17-sidebar-header">'
         f'    <span class="p17-sidebar-logo">P17</span>'
-        f'    <button class="p17-close-btn" id="p17-close">✕</button>'
+        f'    <button id="p17-sidebar-close" class="p17-close-btn">✕</button>'
         f'  </div>'
         f'  <div class="p17-sidebar-url">🔗 {repo_url}</div>'
         f'  <hr style="border:none;border-top:1px solid rgba(238,238,238,0.2);margin-bottom:12px;">'
-        f'  <a class="p17-nav-btn" id="p17-nav-home" href="/" target="_self">🏠 홈</a>'
-        f'  <a class="p17-nav-btn {dash_cls}" id="p17-nav-dash" href="/dashboard" target="_self">📊 대시보드</a>'
-        f'  <a class="p17-nav-btn {anal_cls}" id="p17-nav-analysis" href="/analysis" target="_self">🔍 상세분석</a>'
+        f'{nav_links}'
         f'  <div class="p17-user-box">👤 {user_id}</div>'
         f'</div>',
         unsafe_allow_html=True,
     )
 
-    components.html("""
-<script>
-(function() {
-    var doc = window.parent.document;
-    function setup() {
-        var sb    = doc.getElementById('p17-sidebar');
-        var close = doc.getElementById('p17-close');
-        var ham   = doc.getElementById('p17-ham');
-        if (!sb || !close) { setTimeout(setup, 100); return; }
-        close.onclick = function() { sb.style.transform = 'translateX(-260px)'; };
-        if (ham) {
-            ham.onclick = function() {
-                sb.style.transform = (sb.style.transform === 'translateX(-260px)')
-                    ? 'translateX(0px)' : 'translateX(-260px)';
-            };
-        }
-        var qs      = window.parent.location.search;
-        var navHome = doc.getElementById('p17-nav-home');
-        var navDash = doc.getElementById('p17-nav-dash');
-        var navAnal = doc.getElementById('p17-nav-analysis');
-        if (navHome) navHome.href = '/' + qs;
-        if (navDash) navDash.href = '/dashboard' + qs;
-        if (navAnal) navAnal.href = '/analysis' + qs;
-    }
-    setup();
-})();
-</script>
-""", height=0)
+    components.html(
+        """<script>
+        (function() {
+            function init() {
+                var closeBtn = window.parent.document.getElementById("p17-sidebar-close");
+                var sidebar = window.parent.document.getElementById("p17-sidebar");
+                if (!closeBtn || !sidebar) { setTimeout(init, 100); return; }
+                closeBtn.onclick = function() {
+                    sidebar.style.transform = "translateX(-280px)";
+                    sidebar.style.opacity = "0";
+                    sidebar.style.pointerEvents = "none";
+                };
+            }
+            init();
+        })();
+        </script>""",
+        height=0,
+    )
+
