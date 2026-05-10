@@ -1,33 +1,15 @@
-import streamlit as st
-import requests
-from datetime import datetime
+from __future__ import annotations
+
+from html import escape
 from typing import Optional
 from urllib.parse import quote_plus
-from utils.ui import render_header, render_footer, render_sidebar
 
-BACKEND_HOSTS = ["http://localhost:8000", "http://127.0.0.1:8000"]
-API_HEADERS = {"Content-Type": "application/json"}
-FALLBACK_RESULT_PATHS = ["/result", "/api/result"]
+import streamlit as st
 
-
-def get_analysis_result():
-    last_error = None
-    for host in BACKEND_HOSTS:
-        for path in FALLBACK_RESULT_PATHS:
-            try:
-                response = requests.get(
-                    f"{host}{path}",
-                    headers=API_HEADERS,
-                    timeout=30,
-                )
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as exc:
-                last_error = exc
-
-    if last_error is not None:
-        st.warning("백엔드 분석 결과를 불러올 수 없어 기본값 0으로 표시합니다.")
-    return None
+from services import analysis_service, api_client, auth_service
+from services.api_client import ApiError
+from state import navigation, session
+from utils.ui import render_footer, render_header, render_sidebar
 
 
 def score_emoji(score):
@@ -54,86 +36,59 @@ def vuln_count_color(count):
     return "#4BD33F"
 
 
+def _fetch_result(analysis_id: str | None) -> dict:
+    if analysis_id:
+        return api_client.get_result(analysis_id)
+    return api_client.get_latest_result()
+
+
+def _resolve_result(repo_url: str) -> tuple[dict | None, str | None]:
+    analysis_id = navigation.get_query_analysis_id() or session.get_analysis_id()
+    result = _fetch_result(analysis_id)
+    result_id = str(result.get("analysis_id") or analysis_id or "") or None
+    if result_id:
+        session.set_analysis_id(result_id)
+    result_repo = (result.get("analysis_result") or {}).get("repository") if isinstance(result.get("analysis_result"), dict) else None
+    if result_repo and not repo_url:
+        session.set_repo_url(str(result_repo))
+    return result, result_id
+
+
 def render_dashboard(repo_url: Optional[str]):
-    repo_url = repo_url or st.session_state.get("repo_url", "github.com/example/web-app")
+    if not auth_service.require_auth():
+        st.stop()
 
+    repo_url = repo_url or session.get_repo_url("")
     result_data = None
-    if repo_url:
+    analysis_id = navigation.get_query_analysis_id() or session.get_analysis_id()
+
+    try:
         with st.spinner("백엔드에서 분석 결과를 불러오는 중입니다..."):
-            result_data = get_analysis_result()
+            result_data, analysis_id = _resolve_result(repo_url)
+    except ApiError as exc:
+        if exc.status_code == 401:
+            session.set_return_to(navigation.DASHBOARD_PAGE, repo_url, analysis_id)
+            navigation.go_auth_error(exc.message)
+        render_header(session.is_logged_in(), session.get_user_id(), extra_css=".stApp { background:#222831; color:#EEEEEE; }")
+        st.error(f"분석 결과를 불러올 수 없습니다: {exc.message}")
+        if st.button("처음으로 돌아가기"):
+            navigation.go_home()
+        render_footer()
+        return
 
-    if result_data:
-        analysis = result_data.get("analysis_result", result_data)
-        summary = analysis.get("summary", {})
-        vulnerabilities = analysis.get("vulnerabilities", [])
-
-        analyzed_at = analysis.get("analyzed_at")
-        try:
-            scan_date = datetime.fromisoformat(analyzed_at).strftime("%y/%m/%d %H:%M")
-        except Exception:
-            scan_date = analyzed_at or datetime.now().strftime("%y/%m/%d %H:%M")
-
-        total_vuln = summary.get("total_vulnerabilities", 0)
-        total_files = analysis.get("files_analyzed", 0)
-        affected_files = len({v.get("file") for v in vulnerabilities if v.get("file")})
-
-        by_type = summary.get("by_type", {})
-        vuln_types = [
-            {"name": "SQL Injection",              "count": by_type.get("SQL_INJECTION", 0)},
-            {"name": "Cross-Site Scripting (XSS)", "count": by_type.get("XSS", 0)},
-            {"name": "Hardcoded Credentials",      "count": by_type.get("HARDCODED_SECRET", 0)},
-        ]
-
-        by_severity = summary.get("by_severity", {})
-        danger = by_severity.get("HIGH", 0)
-        warning = by_severity.get("MEDIUM", 0)
-        normal = by_severity.get("LOW", 0)
-
-        security_score = (summary.get("score") or {}).get("overall", 0)
-
-        severity_rank = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
-        level_map = {"HIGH": "위험", "MEDIUM": "경고", "LOW": "보통"}
-        file_summary = {}
-        for vuln in vulnerabilities:
-            file_path = vuln.get("file") or ""
-            if not file_path:
-                continue
-
-            entry = file_summary.setdefault(file_path, {"count": 0, "severity": "LOW"})
-            entry["count"] += 1
-            severity = vuln.get("severity", "LOW")
-            if severity_rank.get(severity, 0) > severity_rank.get(entry["severity"], 0):
-                entry["severity"] = severity
-
-        file_list = [
-            {
-                "file": file_path,
-                "vuln": info["count"],
-                "lines": 0,
-                "level": level_map.get(info["severity"], "보통"),
-            }
-            for file_path, info in file_summary.items()
-        ]
+    vm = analysis_service.build_dashboard_view_model(result_data or {})
+    if vm.get("repo_url"):
+        repo_url = vm["repo_url"]
+        session.set_repo_url(repo_url)
     else:
-        scan_date = datetime.now().strftime("%y/%m/%d %H:%M")
-        total_vuln = 0
-        total_files = 0
-        affected_files = 0
-        danger = 0
-        warning = 0
-        normal = 0
-        security_score = 0
-        vuln_types = [
-            {"name": "SQL Injection",              "count": 0},
-            {"name": "Cross-Site Scripting (XSS)", "count": 0},
-            {"name": "Hardcoded Credentials",      "count": 0},
-        ]
-        file_list = []
+        vm["repo_url"] = repo_url
 
-    logged_in = st.session_state.get("logged_in", False)
-    user_id = st.session_state.get("user_id", "사용자")
+    try:
+        recent_results = analysis_service.build_recent_results_view_model(api_client.list_results(limit=5))
+    except ApiError:
+        recent_results = []
 
-    render_header(logged_in, user_id, extra_css="""
+    render_header(session.is_logged_in(), session.get_user_id(), extra_css="""
         .stApp { background: #222831; color: #EEEEEE; }
         .footer { margin-top: 60px; }
         .score-box {
@@ -152,31 +107,35 @@ def render_dashboard(repo_url: Optional[str]):
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem;
         }
-        .stButton > button {
-            background-color: #393E46 !important; color: #EEEEEE !important;
-            border: none !important; border-radius: 8px !important;
-            padding: 12px 60px !important; font-size: 1rem !important;
-            white-space: nowrap !important; width: 100% !important;
-        }
     """)
 
-    render_sidebar(repo_url, user_id, active="dashboard")
+    render_sidebar(repo_url, session.get_user_id(), active="dashboard", analysis_id=analysis_id, recent_results=recent_results)
 
+    severity = vm["severity_counts"]
+    danger = severity["critical"] + severity["high"]
+    warning = severity["medium"]
+    normal = severity["low"]
+    total_vuln = vm["total_vulnerabilities"]
+    total_files = vm["files_analyzed"]
+    affected_files = vm["affected_files"]
+    security_score = vm["security_score"]
+
+    vuln_types = vm["vulnerability_types"]
     vuln_types_html = "".join(
         f'<span style="color:#EEEEEE; font-size:1rem; font-weight:600;">'
-        f'{v["name"]} <span style="color:#FF4545;">{v["count"]}</span></span>'
+        f'{escape(v["name"])} <span style="color:#FF4545;">{v["count"]}</span></span>'
         for v in vuln_types
-    )
+    ) or '<span style="color:#aaaaaa; font-size:0.95rem;">발견된 취약점 유형이 없습니다.</span>'
 
     file_rows_html = "".join(
         f'<div class="file-row">'
-        f'<span style="flex:3; color:#EEEEEE;">📄 {f["file"]}</span>'
+        f'<span style="flex:3; color:#EEEEEE;">📄 {escape(f["file"])}</span>'
         f'<span style="flex:1; text-align:center; color:{vuln_count_color(f["vuln"])};">{f["vuln"]}</span>'
         f'<span style="flex:1; text-align:center;">{f["lines"]:,}</span>'
         f'<span style="flex:1; text-align:center;"><span class="level-badge level-{f["level"]}">{f["level"]}</span></span>'
         f'</div>'
-        for f in file_list
-    )
+        for f in vm["file_list"]
+    ) or '<div style="color:#aaaaaa; padding:14px 0;">발견된 취약점 파일이 없습니다.</div>'
 
     st.markdown("<div style='height:80px;'></div>", unsafe_allow_html=True)
 
@@ -184,13 +143,13 @@ def render_dashboard(repo_url: Optional[str]):
     with main_col:
         st.markdown(f"""
     <div style="text-align:center; font-size:1.5rem; font-weight:bold; color:#EEEEEE; margin-bottom:20px;">
-        <span style="color:#00ADB5;">{repo_url}</span>의<br>보안 취약점 분석이 완료되었습니다!
+        <span style="color:#00ADB5;">{escape(repo_url or '분석 결과')}</span>의<br>보안 취약점 분석이 완료되었습니다!
     </div>
     """, unsafe_allow_html=True)
 
         st.markdown(
             f'<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">'
-            f'<div class="stat-box"><div class="stat-label">검사 시간</div><div class="stat-value" style="font-size:1.3rem;">{scan_date}</div></div>'
+            f'<div class="stat-box"><div class="stat-label">검사 시간</div><div class="stat-value" style="font-size:1.3rem;">{vm["scan_date"]}</div></div>'
             f'<div class="stat-box"><div class="stat-label">발견된 취약점</div><div class="stat-value danger">{total_vuln}</div></div>'
             f'<div class="stat-box"><div class="stat-label">분석된 파일</div><div class="stat-value">{total_files}</div></div>'
             f'<div class="stat-box"><div class="stat-label">영향 파일</div><div class="stat-value accent">{affected_files}</div></div>'
@@ -238,7 +197,7 @@ def render_dashboard(repo_url: Optional[str]):
     """, unsafe_allow_html=True)
 
         st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
-        href = f"/?page=analysis&repo={quote_plus(repo_url)}" if repo_url else "/?page=analysis"
+        href = f"/?page=analysis&repo={quote_plus(repo_url)}&analysis_id={quote_plus(analysis_id or '')}" if repo_url else "/?page=analysis"
         st.markdown(
             f'<a href="{href}" target="_self" style="text-decoration:none; display:block;">'
             f'<button style="background-color:#393E46; color:#EEEEEE; border:none; border-radius:8px; '
