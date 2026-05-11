@@ -118,17 +118,7 @@ def _create_or_poll_job(repo_url: str) -> None:
 
     job_id = session.get_analysis_job_id()
     if not job_id:
-        try:
-            job = api_client.create_repository_analysis_job(repo_url)
-        except ApiError as exc:
-            if exc.status_code == 404:
-                result = api_client.analyze_repository_sync(repo_url)
-                analysis_id = str(result.get("analysis_id") or "")
-                session.set_analysis_id(analysis_id or None)
-                session.set_analysis_status("success")
-                navigation.go_dashboard(repo_url, analysis_id or None)
-                return
-            raise
+        job = api_client.create_repository_analysis_job(repo_url)
         job_id = str(job.get("job_id") or "")
         if not job_id:
             raise ApiError(0, "분석 작업 ID를 받지 못했습니다.", job)
@@ -144,7 +134,7 @@ def _create_or_poll_job(repo_url: str) -> None:
     session.set_analysis_status(status)
     if status in ('queued', 'running'):
         _show_loading(repo_url, status)
-        time.sleep(1.5)
+        time.sleep(2)
         navigation.go_loading(repo_url)
     elif status == "succeeded":
         analysis_id = job.get("analysis_id")

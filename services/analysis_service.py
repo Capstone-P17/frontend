@@ -101,6 +101,7 @@ def build_analysis_detail_view_model(response: dict) -> dict:
         "total_vulnerabilities": int(summary.get("total_vulnerabilities") or len(vulnerabilities)),
         "files_analyzed": int(analysis.get("files_analyzed") or 0),
         "affected_files": affected_files,
+        "call_graph": _build_call_graph_view(analysis.get("call_graph")),
         "vuln_distribution": [
             {"category": vulnerability_type_to_display_name(str(k)), "count": int(v)}
             for k, v in by_type.items()
@@ -205,6 +206,64 @@ def _build_vulnerability_detail(vuln: dict) -> dict:
         "confidence": vuln.get("confidence"),
         "call_chain": [str(item) for item in call_chain],
     }
+
+
+def _build_call_graph_view(call_graph: object) -> dict[str, Any]:
+    if not call_graph:
+        return {"available": False, "node_count": 0, "edge_count": 0, "preview": []}
+
+    if isinstance(call_graph, dict):
+        nodes = _first_list(call_graph, ("nodes", "functions", "vertices"))
+        edges = _first_list(call_graph, ("edges", "calls", "links"))
+        preview = [_edge_label(edge) for edge in edges[:8]] if edges else [_node_label(node) for node in nodes[:8]]
+        if nodes or edges:
+            return {
+                "available": True,
+                "node_count": len(nodes),
+                "edge_count": len(edges),
+                "preview": [item for item in preview if item],
+            }
+        summary = [
+            f"{key}: {len(value) if isinstance(value, (list, dict)) else value}"
+            for key, value in list(call_graph.items())[:8]
+        ]
+        return {"available": True, "node_count": 0, "edge_count": 0, "preview": summary}
+
+    if isinstance(call_graph, list):
+        return {
+            "available": True,
+            "node_count": len(call_graph),
+            "edge_count": 0,
+            "preview": [_node_label(item) for item in call_graph[:8]],
+        }
+
+    return {"available": True, "node_count": 0, "edge_count": 0, "preview": [str(call_graph)]}
+
+
+def _first_list(source: dict, keys: tuple[str, ...]) -> list:
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, list):
+            return value
+    return []
+
+
+def _node_label(node: object) -> str:
+    if isinstance(node, dict):
+        for key in ("label", "name", "function", "id"):
+            value = node.get(key)
+            if value:
+                return str(value)
+    return str(node)
+
+
+def _edge_label(edge: object) -> str:
+    if isinstance(edge, dict):
+        source = edge.get("source") or edge.get("from") or edge.get("caller")
+        target = edge.get("target") or edge.get("to") or edge.get("callee")
+        if source or target:
+            return f"{source or '?'} → {target or '?'}"
+    return str(edge)
 
 
 def _format_datetime(value: object) -> str:

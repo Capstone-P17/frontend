@@ -142,6 +142,30 @@ def make_cards(details):
     return "".join(group_html(i, vtype, items) for i, (vtype, items) in enumerate(groups.items()))
 
 
+def make_call_graph_panel(call_graph: dict) -> str:
+    if not call_graph.get("available"):
+        return ""
+    preview = call_graph.get("preview") or []
+    preview_html = "".join(
+        f'<div style="background:#2e333d; border-radius:6px; padding:7px 12px; color:#EEEEEE; font-size:0.82rem;">'
+        f'{escape(str(item))}</div>'
+        for item in preview
+    ) or '<div style="color:#aaaaaa; font-size:0.85rem;">표시할 호출 그래프 미리보기가 없습니다.</div>'
+    return (
+        '<div class="stat-box" style="margin-bottom:12px;">'
+        '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">'
+        '<div class="stat-label">호출 그래프</div>'
+        f'<div style="color:#aaaaaa; font-size:0.85rem;">'
+        f'노드 {int(call_graph.get("node_count") or 0):,} · 엣지 {int(call_graph.get("edge_count") or 0):,}'
+        '</div>'
+        '</div>'
+        '<div style="display:flex; flex-wrap:wrap; gap:8px;">'
+        f'{preview_html}'
+        '</div>'
+        '</div>'
+    )
+
+
 def _fetch_result(analysis_id: str | None) -> dict:
     if analysis_id:
         return api_client.get_result(analysis_id)
@@ -314,6 +338,10 @@ def render_analysis(repo_url: Optional[str]):
             f'</div>',
             unsafe_allow_html=True,
         )
+
+        call_graph_html = make_call_graph_panel(vm.get("call_graph") or {})
+        if call_graph_html:
+            st.markdown(call_graph_html, unsafe_allow_html=True)
 
         st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
         st.markdown(make_cards(vm["vuln_details"]), unsafe_allow_html=True)

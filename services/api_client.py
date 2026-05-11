@@ -139,6 +139,10 @@ def get_result(analysis_id: str) -> dict[str, Any]:
     return _request("GET", f"/result/{analysis_id}")
 
 
+def get_file_result(analysis_id: str, file_id: str) -> dict[str, Any]:
+    return _request("GET", f"/result/{analysis_id}/files/{file_id}")
+
+
 def get_latest_result() -> dict[str, Any]:
     return _request("GET", "/result")
 
