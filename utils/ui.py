@@ -146,7 +146,10 @@ _FOOTER_HTML = """
 
 def _navbar_right_html(logged_in: bool, user_id: str) -> str:
     if logged_in:
-        return f'<span style="color:#EEEEEE; font-size:0.95rem;">{user_id}</span>'
+        return (
+            f'<span style="color:#EEEEEE; font-size:0.95rem;">{user_id}</span>'
+            '<a class="navbar-login" href="/?page=login" target="_self">계정</a>'
+        )
     return '<a class="navbar-login" href="/?page=login" target="_self">로그인</a>'
 
 
@@ -166,7 +169,7 @@ def render_header(logged_in: bool, user_id: str, extra_css: str = "", hamburger:
     )
 
 
-def render_auth_header(extra_css: str = ""):
+def render_auth_header(extra_css: str = "", logged_in: bool = False, user_id: str = ""):
     """로그인/회원가입 페이지용 헤더 (항상 비로그인 navbar)."""
     auth_css = (
         ".stApp { background: linear-gradient(180deg, #222831 50%, #00ADB5 100%); color: #EEEEEE; }"
@@ -175,20 +178,25 @@ def render_auth_header(extra_css: str = ""):
         "  padding: 48px 36px 36px !important;"
         "}"
     )
-    render_header(logged_in=False, user_id="", extra_css=auth_css + _AUTH_INPUT_CSS + extra_css)
+    render_header(logged_in=logged_in, user_id=user_id, extra_css=auth_css + _AUTH_INPUT_CSS + extra_css)
 
 
 def render_footer():
     st.markdown(_FOOTER_HTML, unsafe_allow_html=True)
 
 
-def render_sidebar(repo_url: str, user_id: str, active: str):
+def render_sidebar(repo_url: str, user_id: str, active: str, analysis_id: str | None = None, recent_results: list[dict] | None = None):
     nav_items = [
         ("메인페이지", "/", "main"),
         ("대시보드", "dashboard", "dashboard"),
         ("상세 분석", "analysis", "analysis"),
     ]
-    repo_param = f"repo={quote_plus(repo_url)}" if repo_url else ""
+    params = []
+    if repo_url:
+        params.append(f"repo={quote_plus(repo_url)}")
+    if analysis_id:
+        params.append(f"analysis_id={quote_plus(analysis_id)}")
+    repo_param = "&".join(params)
 
     nav_links = ""
     for label, path, key in nav_items:
@@ -202,6 +210,23 @@ def render_sidebar(repo_url: str, user_id: str, active: str):
             f'href="{href}" target="_self">{label}</a>'
         )
 
+    recent_html = ""
+    if recent_results:
+        rows = []
+        for item in recent_results:
+            item_id = item.get("analysis_id") or ""
+            repository = item.get("repository") or "최근 분석"
+            href = f"/?page=dashboard&repo={quote_plus(repository)}&analysis_id={quote_plus(item_id)}" if item_id else "#"
+            rows.append(
+                f'<a class="p17-nav-btn" href="{href}" target="_self">'
+                f'최근: {repository[-28:]} · {item.get("total_vulnerabilities", 0)}건</a>'
+            )
+        recent_html = (
+            '<hr style="border:none;border-top:1px solid rgba(238,238,238,0.2);margin:12px 0;">'
+            '<div style="color:#aaaaaa;font-size:0.78rem;margin:0 0 8px 12px;">최근 분석</div>'
+            + "".join(rows)
+        )
+
     st.markdown(
         f"<style>{_SIDEBAR_CSS}</style>"
         f'<div class="p17-sidebar" id="p17-sidebar">'
@@ -212,6 +237,7 @@ def render_sidebar(repo_url: str, user_id: str, active: str):
         f'  <div class="p17-sidebar-url">🔗 {repo_url}</div>'
         f'  <hr style="border:none;border-top:1px solid rgba(238,238,238,0.2);margin-bottom:12px;">'
         f'{nav_links}'
+        f'{recent_html}'
         f'  <div class="p17-user-box">👤 {user_id}</div>'
         f'</div>',
         unsafe_allow_html=True,
@@ -235,4 +261,3 @@ def render_sidebar(repo_url: str, user_id: str, active: str):
         </script>""",
         height=0,
     )
-

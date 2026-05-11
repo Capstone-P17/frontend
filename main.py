@@ -1,29 +1,37 @@
 import streamlit as st
-from utils.ui import render_header, render_footer
-from utils.compat import get_query_param, set_query_params, rerun
-from app_pages.dashboard import render_dashboard
+from html import escape
+from urllib.parse import quote_plus
+
 from app_pages.analysis import render_analysis
+from app_pages.dashboard import render_dashboard
 from app_pages.loading import render_loading
 from app_pages.login import render_login
+from services import api_client, auth_service, analysis_service
+from services.api_client import ApiError
+from state import navigation, session
+from utils.ui import render_footer, render_header
 
 st.set_page_config(page_title="P17 - 보안 취약점 검사", layout="wide")
 
-page_key = get_query_param("page")
-repo_url = get_query_param("repo")
+page_key = navigation.get_page_key()
+repo_url = navigation.get_query_repo_url() or session.get_repo_url("")
 
-logged_in = st.session_state.get("logged_in", False)
-user_id = st.session_state.get("user_id", "사용자")
+if navigation.is_auth_callback_route():
+    auth_service.handle_auth_callback()
+    st.stop()
 
-if page_key == "dashboard":
+auth_service.refresh_auth_state()
+
+if page_key == navigation.DASHBOARD_PAGE:
     render_dashboard(repo_url)
-elif page_key == "analysis":
+elif page_key == navigation.ANALYSIS_PAGE:
     render_analysis(repo_url)
-elif page_key == "loading":
+elif page_key == navigation.LOADING_PAGE:
     render_loading(repo_url)
-elif page_key == "login":
+elif page_key == navigation.LOGIN_PAGE:
     render_login()
 else:
-    render_header(logged_in, user_id, extra_css="""
+    render_header(session.is_logged_in(), session.get_user_id(), extra_css="""
         .stApp { background: linear-gradient(180deg, #222831 50%, #00ADB5 100%); color: #EEEEEE; }
         .main-content { margin-top: 100px; text-align: center; padding: 40px 0; }
         .main-title { font-size: 2.5rem; font-weight: bold; color: #EEEEEE; margin-bottom: 15px; }
@@ -54,6 +62,10 @@ else:
         .feature-box { flex: 1; padding: 30px; max-width: 300px; }
         .feature-title { color: #00ADB5; font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; }
         .feature-box p { color: #EEEEEE; line-height: 1.6; }
+        .capability-box { max-width: 760px; margin: 24px auto 0; background: rgba(34,40,49,0.38); border-radius: 12px; padding: 18px 24px; }
+        .capability-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .capability-item { background: rgba(238,238,238,0.08); border-radius: 8px; padding: 12px; color: #EEEEEE; font-size: 0.9rem; }
+        .capability-label { color: #00ADB5; font-weight: 700; margin-bottom: 4px; }
     """)
 
     st.markdown("""
@@ -88,17 +100,62 @@ else:
             if submitted:
                 if not url:
                     st.warning("URL을 입력해주세요")
+                elif not session.is_logged_in():
+                    session.clear_analysis_state()
+                    session.set_repo_url(url)
+                    session.set_return_to(navigation.LOADING_PAGE, repo_url=url)
+                    navigation.go_login()
                 else:
-                    st.session_state["repo_url"] = url
-                    st.session_state["analysis_status"] = "pending"
-                    set_query_params(page="loading", repo=url)
-                    rerun()
+                    session.clear_analysis_state()
+                    session.set_repo_url(url)
+                    session.set_analysis_status("pending")
+                    navigation.go_loading(url)
+
+    try:
+        capabilities = analysis_service.build_capabilities_view_model(api_client.get_capabilities())
+        languages = ", ".join(capabilities["supported_languages"])
+        extensions = ", ".join(capabilities["supported_file_extensions"])
+        sources = ", ".join(capabilities["supported_repository_sources"])
+        llm_report = "가능" if capabilities["llm_report_available"] else "불가"
+        st.markdown(f"""
+        <div class="capability-box">
+            <div style="color:#EEEEEE; font-weight:700; margin-bottom:12px;">지원 범위</div>
+            <div class="capability-grid">
+                <div class="capability-item"><div class="capability-label">지원 언어</div>{languages}</div>
+                <div class="capability-item"><div class="capability-label">분석 방식</div>Rule-based 정적 분석</div>
+                <div class="capability-item"><div class="capability-label">지원 파일</div>{extensions}</div>
+                <div class="capability-item"><div class="capability-label">저장소</div>{sources}</div>
+                <div class="capability-item"><div class="capability-label">LLM 탐지</div>비활성화</div>
+                <div class="capability-item"><div class="capability-label">LLM 리포트</div>{llm_report}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    except ApiError:
+        pass
+
+    if session.is_logged_in():
+        try:
+            recent = analysis_service.build_recent_results_view_model(api_client.list_results(limit=5))
+        except ApiError:
+            recent = []
+        if recent:
+            links = "".join(
+                f'<a href="/?page=dashboard&repo={quote_plus(item["repository"])}&analysis_id={quote_plus(item["analysis_id"])}" '
+                f'target="_self" style="color:#EEEEEE; text-decoration:none; display:block; margin:4px 0;">'
+                f'• {escape(item["repository"])} ({item["total_vulnerabilities"]}건)</a>'
+                for item in recent
+            )
+            st.markdown(
+                f'<div style="max-width:760px;margin:16px auto 0;color:#EEEEEE;">'
+                f'<div style="font-weight:700;color:#00ADB5;margin-bottom:6px;">최근 분석</div>{links}</div>',
+                unsafe_allow_html=True,
+            )
 
     st.markdown("""
     <div class="feature-section">
         <div class="feature-box">
             <div class="feature-title">취약점 탐지</div>
-            <p>AST 기반 정적 분석으로 코드를 실행하지 않고도 SQL Injection, XSS, 하드코딩된 비밀번호를 오탐 없이 탐지합니다.</p>
+            <p>Java AST 기반 정적 분석으로 코드를 실행하지 않고도 SQL Injection, XSS, 하드코딩된 비밀번호 등을 탐지합니다.</p>
         </div>
         <div class="feature-box">
             <div class="feature-title">시각화된 결과</div>
@@ -106,7 +163,7 @@ else:
         </div>
         <div class="feature-box">
             <div class="feature-title">AI 수정 제안</div>
-            <p>탐지된 취약점을 AI가 분석하여 왜 위험한지, 어떻게 고쳐야 하는지 즉시 적용 가능한 수정 코드를 생성해드립니다.</p>
+            <p>탐지는 rule-based로 수행하고, 리포트/설명 보조에 한해 AI 사용 가능성을 제공합니다.</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
