@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from state import session
+from utils.compat import get_browser_cookie_header
 
 BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000").rstrip("/")
 SHORT_TIMEOUT = 30
@@ -28,11 +29,19 @@ class ApiError(Exception):
 
 
 def build_headers(include_auth: bool = True) -> dict[str, str]:
+    """Build backend headers.
+
+    Authentication is cookie-based. The backend stores the JWT in an
+    HttpOnly cookie, so frontend code must never read or forward a bearer
+    token from JS/session state. For Streamlit server-side requests, the
+    equivalent of browser `credentials: "include"` is forwarding the browser
+    Cookie header that Streamlit received for this request.
+    """
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if include_auth:
-        token = session.get_access_token()
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+        cookie_header = get_browser_cookie_header()
+        if cookie_header:
+            headers["Cookie"] = cookie_header
     return headers
 
 
@@ -116,10 +125,6 @@ def get_capabilities() -> dict[str, Any]:
 
 def get_current_user() -> dict[str, Any]:
     return _request("GET", "/auth/me")
-
-
-def get_github_login_url() -> dict[str, Any]:
-    return _request("GET", "/auth/github/login", include_auth=False)
 
 
 def create_repository_analysis_job(repo_url: str) -> dict[str, Any]:

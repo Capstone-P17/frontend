@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import json
 from html import escape
-from urllib.parse import quote
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -9,93 +9,128 @@ import streamlit.components.v1 as components
 from services import api_client
 from services.api_client import ApiError
 from state import navigation, session
-from utils.compat import get_query_param
 
 
-AUTH_REDIRECT_CAVEAT = (
-    "백엔드 /auth/github/callback 이 Streamlit으로 access_token을 redirect/token-handoff 해야 "
-    "프론트엔드 OAuth E2E가 완료됩니다. 현재 기본 백엔드 callback은 JSON TokenResponse를 반환할 수 있습니다."
+AUTH_FLOW_NOTE = (
+    "GitHub OAuth URL 생성과 JWT 발급은 백엔드가 담당하며, JWT는 HttpOnly 쿠키로만 전달됩니다."
 )
 
 
 def get_login_url() -> str:
-    try:
-        payload = api_client.get_github_login_url()
-        url = payload.get("authorization_url")
-        if isinstance(url, str) and url:
-            return url
-    except ApiError:
-        pass
     return f"{api_client.BACKEND_BASE_URL}/auth/github"
+
+
+def get_logout_url() -> str:
+    return f"{api_client.BACKEND_BASE_URL}/auth/logout"
+
+
+def _browser_redirect_script(url: str) -> str:
+    return f"window.parent.location.href={json.dumps(url)};"
+
+
+def _logout_script(logout_url: str, redirect_url: str = "/") -> str:
+    return f"""
+<script>
+(async function() {{
+    try {{
+        await window.parent.fetch({json.dumps(logout_url)}, {{
+            method: "POST",
+            credentials: "include"
+        }});
+    }} finally {{
+        {_browser_redirect_script(redirect_url)}
+    }}
+}})();
+</script>
+"""
 
 
 def start_github_login() -> None:
     url = get_login_url()
     safe_url = escape(url, quote=True)
-    quoted_url = quote(url, safe="/:?&=%#.+-_~")
     st.markdown(f'<meta http-equiv="refresh" content="0; url={safe_url}">', unsafe_allow_html=True)
     components.html(
-        f"<script>window.parent.location.href='{quoted_url}';</script>",
+        f"<script>{_browser_redirect_script(url)}</script>",
         height=0,
     )
     st.info("GitHub 로그인 페이지로 이동합니다...")
 
 
-def handle_auth_callback() -> bool:
-    token = navigation.get_query_access_token()
-    if not token:
-        return False
+def _redirect_browser(url: str) -> None:
+    safe_url = escape(url, quote=True)
+    st.markdown(f'<meta http-equiv="refresh" content="0; url={safe_url}">', unsafe_allow_html=True)
+    components.html(
+        f"<script>{_browser_redirect_script(url)}</script>",
+        height=0,
+    )
 
-    token_type = get_query_param("token_type")
+
+def _return_target_url() -> str:
+    target = session.get_return_to()
+    session.clear_return_to()
+    if not target:
+        return navigation.build_href()
+    return navigation.build_href(
+        page=target.get("page"),
+        repo_url=target.get("repo"),
+        analysis_id=target.get("analysis_id"),
+    )
+
+
+def _auth_failed_url() -> str:
+    return "/login?error=auth_failed"
+
+
+def handle_auth_callback() -> bool:
+    st.markdown(
+        "<div style='padding:48px;text-align:center;color:#EEEEEE;'>로그인 처리 중...</div>",
+        unsafe_allow_html=True,
+    )
     try:
-        session.set_access_token(token)
-        session.set_token_type(token_type or "bearer")
         user = fetch_current_user()
         if not user:
             session.clear_auth()
-            navigation.go_auth_error("로그인 토큰 검증에 실패했습니다. 다시 로그인해 주세요.")
+            _redirect_browser(_auth_failed_url())
             return True
-        session.set_auth(token, token_type or "bearer", user)
-    except ApiError as exc:
+    except ApiError:
         session.clear_auth()
-        navigation.go_auth_error(exc.message)
+        _redirect_browser(_auth_failed_url())
         return True
 
-    target = session.get_return_to()
-    session.clear_return_to()
-    if target:
-        repo = target.get("repo") or session.get_repo_url("")
-        analysis_id = target.get("analysis_id")
-        page = target.get("page")
-        if page == navigation.LOADING_PAGE and repo:
-            navigation.go_loading(repo)
-        elif page == navigation.DASHBOARD_PAGE and repo:
-            navigation.go_dashboard(repo, analysis_id)
-        elif page == navigation.ANALYSIS_PAGE and repo:
-            navigation.go_analysis(repo, analysis_id)
-        else:
-            navigation.go_home()
-    else:
-        navigation.go_home()
+    _redirect_browser(_return_target_url())
     return True
 
 
 def fetch_current_user() -> dict | None:
     user = api_client.get_current_user()
-    session.set_user(user)
-    session.set_auth(session.get_access_token() or "", session.get_token_type(), user)
+    session.set_authenticated_user(user)
     return user
+
+
+def refresh_auth_state() -> None:
+    if session.is_logged_in():
+        return
+    try:
+        fetch_current_user()
+    except ApiError:
+        session.clear_auth()
 
 
 def logout() -> None:
     session.clear_auth()
     session.clear_analysis_state()
-    navigation.go_home()
+    components.html(_logout_script(get_logout_url()), height=0)
+    st.info("로그아웃 중입니다...")
 
 
 def require_auth() -> bool:
-    if session.get_access_token():
+    if session.is_logged_in():
         return True
+    try:
+        fetch_current_user()
+        return True
+    except ApiError:
+        session.clear_auth()
     repo = navigation.get_query_repo_url() or session.get_repo_url("")
     analysis_id = navigation.get_query_analysis_id() or session.get_analysis_id()
     page = navigation.get_page_key() or navigation.HOME_PAGE

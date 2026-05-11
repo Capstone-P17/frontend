@@ -31,6 +31,8 @@ def render_login():
 
         auth_error = navigation.get_query_auth_error()
         if auth_error:
+            if auth_error == "auth_failed":
+                auth_error = "인증 확인에 실패했습니다. 다시 로그인해 주세요."
             st.error(auth_error)
 
         if session.is_logged_in():
@@ -57,6 +59,6 @@ def render_login():
             'GitHub 로그인을 통해 JWT 인증 기반 소스코드 분석 기능을 이용할 수 있습니다.</div>',
             unsafe_allow_html=True,
         )
-        st.caption(auth_service.AUTH_REDIRECT_CAVEAT)
+        st.caption(auth_service.AUTH_FLOW_NOTE)
 
     render_footer()

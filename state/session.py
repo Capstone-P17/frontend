@@ -8,8 +8,6 @@ KEY_REPO_URL = "repo_url"
 KEY_ANALYSIS_ID = "analysis_id"
 KEY_ANALYSIS_JOB_ID = "analysis_job_id"
 KEY_ANALYSIS_STATUS = "analysis_status"
-KEY_ACCESS_TOKEN = "access_token"
-KEY_TOKEN_TYPE = "token_type"
 KEY_USER = "user"
 KEY_USER_ID = "user_id"
 KEY_LOGGED_IN = "logged_in"
@@ -64,31 +62,6 @@ def set_analysis_status(status: str) -> None:
     _state()[KEY_ANALYSIS_STATUS] = status
 
 
-def get_access_token() -> str | None:
-    value = _state().get(KEY_ACCESS_TOKEN)
-    return value if isinstance(value, str) and value else None
-
-
-def set_access_token(token: str | None) -> None:
-    if token:
-        _state()[KEY_ACCESS_TOKEN] = token
-    else:
-        _state().pop(KEY_ACCESS_TOKEN, None)
-        _state()[KEY_LOGGED_IN] = False
-
-
-def get_token_type(default: str = "bearer") -> str:
-    value = _state().get(KEY_TOKEN_TYPE, default)
-    return value if isinstance(value, str) and value else default
-
-
-def set_token_type(token_type: str | None) -> None:
-    if token_type:
-        _state()[KEY_TOKEN_TYPE] = token_type
-    else:
-        _state().pop(KEY_TOKEN_TYPE, None)
-
-
 def get_user() -> dict | None:
     value = _state().get(KEY_USER)
     return value if isinstance(value, dict) else None
@@ -104,7 +77,7 @@ def set_user(user: dict | None) -> None:
 
 
 def is_logged_in() -> bool:
-    return bool(_state().get(KEY_LOGGED_IN, False) and get_access_token())
+    return bool(_state().get(KEY_LOGGED_IN, False) and get_user())
 
 
 def get_user_id(default: str = "사용자") -> str:
@@ -118,15 +91,13 @@ def get_user_id(default: str = "사용자") -> str:
     return value if isinstance(value, str) and value else default
 
 
-def set_auth(access_token: str, token_type: str = "bearer", user: dict | None = None) -> None:
-    set_access_token(access_token)
-    set_token_type(token_type or "bearer")
+def set_authenticated_user(user: dict | None) -> None:
     set_user(user)
-    _state()[KEY_LOGGED_IN] = bool(access_token and user)
+    _state()[KEY_LOGGED_IN] = bool(user)
 
 
 def clear_auth() -> None:
-    for key in (KEY_ACCESS_TOKEN, KEY_TOKEN_TYPE, KEY_USER, KEY_USER_ID):
+    for key in (KEY_USER, KEY_USER_ID):
         _state().pop(key, None)
     _state()[KEY_LOGGED_IN] = False
     clear_return_to()

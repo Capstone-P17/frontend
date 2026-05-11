@@ -16,9 +16,11 @@ st.set_page_config(page_title="P17 - 보안 취약점 검사", layout="wide")
 page_key = navigation.get_page_key()
 repo_url = navigation.get_query_repo_url() or session.get_repo_url("")
 
-if page_key == navigation.AUTH_CALLBACK_PAGE or navigation.get_query_access_token():
+if navigation.is_auth_callback_route():
     auth_service.handle_auth_callback()
     st.stop()
+
+auth_service.refresh_auth_state()
 
 if page_key == navigation.DASHBOARD_PAGE:
     render_dashboard(repo_url)
@@ -98,7 +100,7 @@ else:
             if submitted:
                 if not url:
                     st.warning("URL을 입력해주세요")
-                elif not session.get_access_token():
+                elif not session.is_logged_in():
                     session.clear_analysis_state()
                     session.set_repo_url(url)
                     session.set_return_to(navigation.LOADING_PAGE, repo_url=url)
