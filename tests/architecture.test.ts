@@ -49,7 +49,32 @@ describe('architecture boundaries', () => {
     expect(source).toContain("cache: 'no-store'");
   });
 
+  it('uses the documented asynchronous repository analysis API contract', () => {
+    const source = fs.readFileSync(path.join(root, 'src/lib/server/backend.ts'), 'utf8');
+    expect(source).toContain("'/analyze/repository/jobs'");
+    expect(source).toContain('body: { url: repoUrl }');
+    expect(source).toContain('`/analyze/jobs/${encodeURIComponent(jobId)}`');
+    expect(source).toContain('`/result/${encodeURIComponent(analysisId)}`');
+  });
 
+  it('keeps the repository submit form usable before client hydration', () => {
+    const source = fs.readFileSync(path.join(root, 'src/components/home/RepoSubmitForm.tsx'), 'utf8');
+    expect(source).toContain('action="/loading"');
+    expect(source).toContain('method="get"');
+    expect(source).toContain('name="repo"');
+    expect(source).toContain('event.preventDefault()');
+  });
+
+  it('polls loading jobs server-side without relying on client hydration', () => {
+    const pageSource = fs.readFileSync(path.join(root, 'src/app/loading/page.tsx'), 'utf8');
+    expect(pageSource).toContain('createAnalysisJob(repo)');
+    expect(pageSource).toContain('getAnalysisJob(jobId)');
+    expect(pageSource).toContain('job_id=${encodeURIComponent(createdJobId)}');
+    expect(pageSource).toContain('<meta httpEquiv="refresh"');
+    expect(pageSource).toContain('&poll=${nextPoll}');
+    expect(pageSource).toContain('Polling:');
+    expect(pageSource).not.toContain('LoadingClient');
+  });
 
   it('logout route expires auth cookies on the Next response', () => {
     const source = fs.readFileSync(path.join(root, 'src/app/api/auth/logout/route.ts'), 'utf8');

@@ -76,8 +76,10 @@ export async function backendRequest<T>(path: string, options: BackendRequestOpt
 export type AnalysisJob = {
   job_id: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed' | string;
-  analysis_id?: string;
-  error?: string;
+  analysis_id?: string | null;
+  error?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export async function getCurrentUser(): Promise<User> {

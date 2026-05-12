@@ -24,26 +24,12 @@ export function RepoSubmitForm({ isLoggedIn }: Props) {
       return;
     }
     setPending(true);
-    try {
-      const response = await fetch('/api/analysis/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url: trimmed }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.message ?? data?.error ?? '분석 작업 생성에 실패했습니다.');
-      router.push(`/loading?repo=${encodeURIComponent(trimmed)}&job_id=${encodeURIComponent(data.job_id)}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '분석 작업 생성에 실패했습니다.');
-    } finally {
-      setPending(false);
-    }
+    router.push(`/loading?repo=${encodeURIComponent(trimmed)}`);
   }
 
   return (
-    <form className="repo-form" onSubmit={submit}>
-      <input value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" />
+    <form className="repo-form" action="/loading" method="get" onSubmit={submit}>
+      <input name="repo" value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" />
       <button type="submit" disabled={pending}>{pending ? '...' : '✓'}</button>
       {error ? <p className="form-error">{error}</p> : null}
     </form>
