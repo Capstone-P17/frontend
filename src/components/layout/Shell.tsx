@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { AnalysisSidePanel } from '@/components/layout/AnalysisSidePanel';
 import { AuthMenu } from '@/components/layout/AuthMenu';

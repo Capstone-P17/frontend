@@ -19,8 +19,8 @@ describe('route helpers', () => {
     expect(safeReturnTo('/dashboard')).toBe('/dashboard');
   });
 
-  it('keeps route handler allowlist narrow', () => {
-    expect(ROUTE_HANDLER_ALLOWLIST).toEqual(['/api/auth/logout', '/api/analysis/jobs', '/api/analysis/jobs/[id]', '/api/analysis/results/[id]/refresh']);
+  it('keeps route handler allowlist empty for static deployment', () => {
+    expect(ROUTE_HANDLER_ALLOWLIST).toEqual([]);
     expect(buildDashboardHref('repo', 'id')).toBe('/dashboard?repo=repo&analysis_id=id');
   });
 });

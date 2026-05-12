@@ -36,10 +36,10 @@ describe('architecture boundaries', () => {
     }
   });
 
-  it('only allows approved browser same-origin route handlers', () => {
-    const routeFiles = walk(path.join(root, 'src/app/api')).filter((file) => file.endsWith('/route.ts')).map((file) => rel(file).replace(/^src\/app/, '').replace(/\/route\.ts$/, ''));
-    expect(routeFiles.sort()).toEqual([...ROUTE_HANDLER_ALLOWLIST].sort());
-    expect(routeFiles.some((file) => file.includes('[...') || file.includes('/proxy') || file.includes('/backend'))).toBe(false);
+  it('does not define Next API route handlers for static deployment', () => {
+    const routeFiles = walk(path.join(root, 'src/app/api')).filter((file) => file.endsWith('/route.ts')).map((file) => rel(file));
+    expect(routeFiles).toEqual([]);
+    expect(ROUTE_HANDLER_ALLOWLIST).toEqual([]);
   });
 
   it('backend client forwards cookies server-side without bearer authorization and disables cache', () => {
@@ -65,13 +65,14 @@ describe('architecture boundaries', () => {
     expect(source).toContain('event.preventDefault()');
   });
 
-  it('creates missing loading jobs server-side and polls internally without page refresh', () => {
-    const pageSource = fs.readFileSync(path.join(root, 'src/app/loading/page.tsx'), 'utf8');
+  it('creates missing loading jobs client-side and polls backend without page refresh', () => {
+    const pageSource = fs.readFileSync(path.join(root, 'src/components/loading/LoadingPageClient.tsx'), 'utf8');
     const clientSource = fs.readFileSync(path.join(root, 'src/components/loading/LoadingClient.tsx'), 'utf8');
-    expect(pageSource).toContain('createAnalysisJob(repo)');
-    expect(pageSource).toContain('job_id=${encodeURIComponent(createdJobId)}');
+    expect(pageSource).toContain('createAnalysisJobClient(repo)');
+    expect(pageSource).toContain('job_id=${encodeURIComponent(job.job_id)}');
     expect(pageSource).toContain('LoadingClient');
     expect(pageSource).not.toContain('<meta httpEquiv="refresh"');
+    expect(clientSource).toContain('getAnalysisJobClient(jobId)');
     expect(clientSource).toContain('window.setInterval');
     expect(clientSource).toContain('결과를 기다리는 중입니다.');
     expect(clientSource).toContain('분석이 완료되었습니다.');
@@ -79,19 +80,33 @@ describe('architecture boundaries', () => {
     expect(clientSource).not.toContain('Polling:');
   });
 
-  it('logout route expires auth cookies on the Next response', () => {
-    const source = fs.readFileSync(path.join(root, 'src/app/api/auth/logout/route.ts'), 'utf8');
-    expect(source).toContain('expireAuthCookies(response)');
-    expect(source).toContain('AUTH_COOKIE_NAME');
-    expect(source).toContain('OAUTH_STATE_COOKIE_NAME');
-    expect(source).toContain('response.cookies.set');
+  it('logout uses the deployed backend directly instead of a Next route handler', () => {
+    const authMenuSource = fs.readFileSync(path.join(root, 'src/components/layout/AuthMenu.tsx'), 'utf8');
+    const logoutButtonSource = fs.readFileSync(path.join(root, 'src/components/layout/LogoutButton.tsx'), 'utf8');
+    expect(authMenuSource).toContain('logoutClient()');
+    expect(logoutButtonSource).toContain('logoutClient()');
+    expect(authMenuSource).not.toContain('/api/auth/logout');
+    expect(logoutButtonSource).not.toContain('/api/auth/logout');
   });
 
-  it('dynamic pages opt out of static authenticated rendering', () => {
-    for (const file of ['src/app/login/page.tsx', 'src/app/auth/callback/page.tsx', 'src/app/loading/page.tsx', 'src/app/dashboard/page.tsx', 'src/app/analysis/page.tsx']) {
+  it('authenticated app pages delegate auth/data loading to client components', () => {
+    const pages = [
+      ['src/app/login/page.tsx', 'LoginClient'],
+      ['src/app/auth/callback/page.tsx', 'AuthCallbackClient'],
+      ['src/app/loading/page.tsx', 'LoadingPageClient'],
+      ['src/app/dashboard/page.tsx', 'DashboardClient'],
+      ['src/app/analysis/page.tsx', 'AnalysisClient'],
+    ] as const;
+
+    for (const [file, component] of pages) {
       const source = fs.readFileSync(path.join(root, file), 'utf8');
-      expect(source, file).toContain("dynamic = 'force-dynamic'");
-      expect(source, file).toContain('revalidate = 0');
+      expect(source, file).toContain(component);
+      expect(source, file).not.toContain('@/lib/server/backend');
+      expect(source, file).not.toContain('getCurrentUser');
     }
+
+    const clientSource = fs.readFileSync(path.join(root, 'src/lib/client/backend.ts'), 'utf8');
+    expect(clientSource).toContain("credentials: 'include'");
+    expect(clientSource).toContain('PUBLIC_BACKEND_BASE_URL');
   });
 });

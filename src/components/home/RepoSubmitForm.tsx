@@ -5,11 +5,11 @@ import { FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-type Props = { isLoggedIn: boolean };
+type Props = { isLoggedIn: boolean; authLoading?: boolean };
 
 const SAMPLE_REPOSITORY_URL = 'https://github.com/Capstone-P17/backend';
 
-export function RepoSubmitForm({ isLoggedIn }: Props) {
+export function RepoSubmitForm({ isLoggedIn, authLoading = false }: Props) {
   const router = useRouter();
   const [repo, setRepo] = useState('');
   const [error, setError] = useState('');
@@ -20,6 +20,10 @@ export function RepoSubmitForm({ isLoggedIn }: Props) {
     const trimmed = url.trim();
     if (!trimmed) {
       setError('URL을 입력해주세요');
+      return;
+    }
+    if (authLoading) {
+      setError('로그인 상태를 확인하는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
     if (!isLoggedIn) {

@@ -1,14 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { getAnalysisJobClient } from '@/lib/client/backend';
 import { useEffect, useState } from 'react';
-
-type Job = {
-  job_id: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed' | string;
-  analysis_id?: string | null;
-  error?: string | null;
-};
 
 type Props = {
   repo: string;
@@ -29,9 +23,7 @@ export function LoadingClient({ repo, jobId }: Props) {
       if (cancelled || inFlight) return;
       inFlight = true;
       try {
-        const response = await fetch(`/api/analysis/jobs/${encodeURIComponent(jobId)}`, { credentials: 'include', cache: 'no-store' });
-        const data = (await response.json().catch(() => ({}))) as Job & { message?: string };
-        if (!response.ok) throw new Error(data.message ?? data.error ?? '분석 작업 상태를 불러올 수 없습니다.');
+        const data = await getAnalysisJobClient(jobId);
         if (cancelled) return;
 
         setJobStatus(data.status);

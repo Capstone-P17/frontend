@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { logoutClient } from '@/lib/client/backend';
 import type { User } from '@/lib/types';
 
 type Props = {
@@ -76,11 +77,10 @@ export function AuthMenu({ user, loginUrl }: Props) {
     setLogoutPending(true);
     const toastId = toast.loading('로그아웃 중입니다...');
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      if (!response.ok) throw new Error('로그아웃 요청에 실패했습니다.');
+      await logoutClient();
       toast.success('로그아웃되었습니다.', { id: toastId });
       router.push('/');
-      router.refresh();
+      window.location.reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '로그아웃에 실패했습니다.', { id: toastId });
       setLogoutPending(false);

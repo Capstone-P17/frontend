@@ -1,9 +1,4 @@
-export const ROUTE_HANDLER_ALLOWLIST = [
-  '/api/auth/logout',
-  '/api/analysis/jobs',
-  '/api/analysis/jobs/[id]',
-  '/api/analysis/results/[id]/refresh',
-] as const;
+export const ROUTE_HANDLER_ALLOWLIST = [] as const;
 
 export type SearchLike = URLSearchParams | Record<string, string | string[] | undefined>;
 

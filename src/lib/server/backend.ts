@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { cookies, headers } from 'next/headers';
-import { BackendError, extractBackendMessage } from './errors';
+import { BackendError, extractBackendMessage } from '@/lib/backend-errors';
 import { PUBLIC_BACKEND_BASE_URL } from '@/lib/backend-url';
 import type { User } from '@/lib/types';
 
