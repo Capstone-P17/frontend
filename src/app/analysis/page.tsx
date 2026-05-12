@@ -23,6 +23,6 @@ export default async function AnalysisPage({ searchParams }: Props) {
   const result = await getAnalysisResult(analysisId);
   const vm = buildAnalysisDetailViewModel(result);
   const repo = vm.repo_url || requestedRepo;
-  const recent = buildRecentResultsViewModel(await listResults(5).catch(() => ({})));
-  return <Shell user={user} active="analysis" repo={repo} analysisId={vm.analysis_id || analysisId} recentResults={recent} showSidebar><AnalysisView vm={vm} repo={repo} /></Shell>;
+  const recent = buildRecentResultsViewModel(await listResults(8).catch(() => ({})));
+  return <Shell user={user} active="analysis" repo={repo} analysisId={vm.analysis_id || analysisId} recentResults={recent} showAnalysisPanel><AnalysisView vm={vm} repo={repo} /></Shell>;
 }

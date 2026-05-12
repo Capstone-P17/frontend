@@ -1,23 +1,36 @@
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { buildAnalysisHref } from '@/lib/routes';
 import type { DashboardViewModel } from '@/lib/view-models/analysis';
 
-function scoreEmoji(score: number): string {
-  if (score < 40) return '😢';
-  if (score < 70) return '😐';
-  return '😊';
+function scoreTone(score: number): 'danger' | 'warning' | 'normal' {
+  if (score < 40) return 'danger';
+  if (score < 70) return 'warning';
+  return 'normal';
 }
 
-function scoreColor(score: number): string {
-  if (score < 40) return '#FF4545';
-  if (score < 70) return '#FFD415';
-  return '#4BD33F';
+function scoreLabel(score: number): string {
+  if (score < 40) return '위험';
+  if (score < 70) return '주의';
+  return '양호';
 }
 
-function vulnCountColor(count: number): string {
-  if (count >= 70) return '#FF4545';
-  if (count >= 30) return '#FFD415';
-  return '#4BD33F';
+function severityTotal(severity: DashboardViewModel['severity_counts']): number {
+  return severity.critical + severity.high + severity.medium + severity.low;
+}
+
+function severityPercent(count: number, total: number): number {
+  if (!total) return 0;
+  return Math.max(3, Math.round((count / total) * 100));
+}
+
+function vulnCountTone(count: number): string {
+  if (count >= 70) return 'danger-text';
+  if (count >= 30) return 'warning-text';
+  return 'normal-text';
 }
 
 export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel; repo: string; analysisId?: string | null }) {
@@ -25,43 +38,76 @@ export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel
   const danger = severity.critical + severity.high;
   const warning = severity.medium;
   const normal = severity.low;
+  const totalSeverity = severityTotal(severity);
+  const tone = scoreTone(vm.security_score);
+  const topTypes = vm.vulnerability_types.slice(0, 5);
+  const currentAnalysisId = vm.analysis_id || analysisId;
+
   return (
-    <section className="content-wrap">
-      <h1 className="page-title"><span>{repo || '분석 결과'}</span>의<br />보안 취약점 분석이 완료되었습니다!</h1>
-      <div className="stats-grid four">
-        <div className="stat-box"><div className="stat-label">검사 시간</div><div className="stat-value small">{vm.scan_date}</div></div>
-        <div className="stat-box"><div className="stat-label">발견된 취약점</div><div className="stat-value danger">{vm.total_vulnerabilities}</div></div>
-        <div className="stat-box"><div className="stat-label">분석된 파일</div><div className="stat-value">{vm.files_analyzed}</div></div>
-        <div className="stat-box"><div className="stat-label">영향 파일</div><div className="stat-value accent">{vm.affected_files}</div></div>
-      </div>
-      <div className="dashboard-row">
-        <div className="score-box">
-          <div className="score-emoji">{scoreEmoji(vm.security_score)}</div>
-          <div className="score-value" style={{ color: scoreColor(vm.security_score) }}>{vm.security_score}<span>/100</span></div>
-          <div className="muted">보안점수</div>
+    <section className="dashboard-container">
+      <div className="dashboard-hero-card">
+        <div>
+          <Badge className="dashboard-eyebrow" variant="outline">Analysis Complete</Badge>
+          <h1>보안 취약점 분석 결과</h1>
+          <p>{repo || '분석 대상 저장소'}에 대한 정적 분석 결과를 요약했습니다.</p>
         </div>
-        <div className="vuln-summary">
-          <div className="summary-title">총 취약점 {vm.total_vulnerabilities}건</div>
-          <div className="severity-line"><span className="danger-text">위험 {danger}</span><span className="warning-text">경고 {warning}</span><span className="normal-text">보통 {normal}</span></div>
-          <div className="summary-title">취약점 유형별 건수</div>
-          <div className="type-list">
-            {vm.vulnerability_types.length ? vm.vulnerability_types.map((type) => <span key={type.type}>{type.name} <b>{type.count}</b></span>) : <span className="muted">발견된 취약점 유형이 없습니다.</span>}
-          </div>
-        </div>
+        <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildAnalysisHref(repo, currentAnalysisId)} />}>상세 분석 보기</Button>
       </div>
-      <div className="file-table">
-        <div className="table-title">상세 취약점 리스트</div>
-        <div className="file-row header"><span>파일명</span><span>취약점 건수</span><span>라인 수</span><span>위험도</span></div>
-        {vm.file_list.length ? vm.file_list.map((file) => (
-          <div className="file-row" key={file.file}>
-            <span>📄 {file.file}</span>
-            <span style={{ color: vulnCountColor(file.vuln) }}>{file.vuln}</span>
-            <span>{file.lines.toLocaleString()}</span>
-            <span><span className={`level-badge level-${file.level}`}>{file.level}</span></span>
-          </div>
-        )) : <div className="empty-row">발견된 취약점 파일이 없습니다.</div>}
+
+      <div className="dashboard-kpi-grid">
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>검사 시간</span><strong className="small-value">{vm.scan_date}</strong></CardContent></Card>
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>발견된 취약점</span><strong className="danger-text">{vm.total_vulnerabilities}</strong></CardContent></Card>
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>분석된 파일</span><strong>{vm.files_analyzed}</strong></CardContent></Card>
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>영향 파일</span><strong>{vm.affected_files}</strong></CardContent></Card>
       </div>
-      <Link className="wide-button" href={buildAnalysisHref(repo, analysisId)}>상세 분석결과 확인하기</Link>
+
+      <div className="dashboard-summary-stack">
+          <div className="dashboard-main-grid">
+            <Card className="dashboard-card dashboard-score-card">
+              <CardContent className="dashboard-card-content">
+                <div className="dashboard-card-header">
+                  <span>보안 점수</span>
+                  <Badge className={`score-badge ${tone}`} variant="outline">{scoreLabel(vm.security_score)}</Badge>
+                </div>
+                <div className={`score-meter ${tone}`} style={{ '--score': `${vm.security_score}%` } as CSSProperties}>
+                  <div><strong>{vm.security_score}</strong><span>/100</span></div>
+                </div>
+                <p className="dashboard-muted">점수가 낮을수록 우선 조치가 필요한 취약점이 많습니다.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="dashboard-card">
+              <CardContent className="dashboard-card-content">
+                <div className="dashboard-card-header"><span>심각도 분포</span><Badge variant="outline">총 {vm.total_vulnerabilities}건</Badge></div>
+                <div className="severity-stack">
+                  <div className="severity-row"><span>위험</span><div><i className="danger" style={{ width: `${severityPercent(danger, totalSeverity)}%` }} /></div><b>{danger}</b></div>
+                  <div className="severity-row"><span>경고</span><div><i className="warning" style={{ width: `${severityPercent(warning, totalSeverity)}%` }} /></div><b>{warning}</b></div>
+                  <div className="severity-row"><span>보통</span><div><i className="normal" style={{ width: `${severityPercent(normal, totalSeverity)}%` }} /></div><b>{normal}</b></div>
+                </div>
+                <div className="type-chip-list">
+                  {topTypes.length ? topTypes.map((type) => <Badge key={type.type} className="type-chip" variant="secondary">{type.name} · {type.count}</Badge>) : <span className="dashboard-muted">발견된 취약점 유형이 없습니다.</span>}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="dashboard-card">
+            <CardContent className="dashboard-card-content">
+              <div className="dashboard-card-header"><span>취약점 파일 목록</span><Badge variant="outline">{vm.file_list.length}개 파일</Badge></div>
+              <div className="dashboard-file-table">
+                <div className="dashboard-file-row header"><span>파일명</span><span>취약점</span><span>라인</span><span>위험도</span></div>
+                {vm.file_list.length ? vm.file_list.map((file) => (
+                  <div className="dashboard-file-row" key={file.file}>
+                    <span className="file-name">{file.file}</span>
+                    <span className={vulnCountTone(file.vuln)}>{file.vuln}</span>
+                    <span>{file.lines.toLocaleString()}</span>
+                    <span><span className={`level-badge level-${file.level}`}>{file.level}</span></span>
+                  </div>
+                )) : <div className="empty-row">발견된 취약점 파일이 없습니다.</div>}
+              </div>
+            </CardContent>
+          </Card>
+      </div>
     </section>
   );
 }

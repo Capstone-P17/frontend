@@ -67,6 +67,7 @@ function formatDatetime(value: unknown): string {
 
 export type DashboardViewModel = ReturnType<typeof buildDashboardViewModel>;
 export type AnalysisDetailViewModel = ReturnType<typeof buildAnalysisDetailViewModel>;
+export type RecentResultsViewModel = ReturnType<typeof buildRecentResultsViewModel>;
 
 export function buildDashboardViewModel(response: Dict) {
   const { analysisId, analysis } = splitResponse(response);

@@ -1,14 +1,10 @@
+import Link from 'next/link';
+import { MarkdownContent } from '@/components/analysis/MarkdownContent';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { buildDashboardHref } from '@/lib/routes';
 import type { AnalysisDetailViewModel } from '@/lib/view-models/analysis';
-
-const TYPE_ICONS: Record<string, string> = {
-  'SQL Injection': '🗄',
-  'Cross-Site Scripting (XSS)': '🌐',
-  'Hardcoded Credentials': '🔑',
-  'Command Injection': '💻',
-  'Path Traversal': '📁',
-  'Insecure Randomness': '🎲',
-  'Weak Cryptographic Hash': '🔓',
-};
 
 function codeLines(code: string, line: number | null) {
   const lines = String(code || '코드 정보가 없습니다.').split('\n');
@@ -24,48 +20,80 @@ export function AnalysisView({ vm, repo }: { vm: AnalysisDetailViewModel; repo: 
   for (const detail of vm.vuln_details) grouped.set(detail.type, [...(grouped.get(detail.type) ?? []), detail]);
 
   return (
-    <section className="content-wrap">
-      <h1 className="page-title"><span>{repo || '분석 결과'}</span>의<br />상세 보안취약점 분석 결과</h1>
-      <div className="stats-grid four">
-        <div className="stat-box"><div className="stat-label">검사 시간</div><div className="stat-value small">{vm.scan_date}</div></div>
-        <div className="stat-box"><div className="stat-label">분석된 파일</div><div className="stat-value">{vm.files_analyzed}</div></div>
-        <div className="stat-box"><div className="stat-label">발견된 취약점</div><div className="stat-value danger">{vm.total_vulnerabilities}</div></div>
-        <div className="stat-box"><div className="stat-label">영향 파일</div><div className="stat-value danger">{vm.affected_files}</div></div>
+    <section className="dashboard-container analysis-container">
+      <div className="dashboard-hero-card">
+        <div>
+          <Badge className="dashboard-eyebrow" variant="outline">Detailed Analysis</Badge>
+          <h1>상세 보안취약점 분석</h1>
+          <p>{repo || '분석 대상 저장소'}에서 발견된 취약점의 코드, 호출 경로, 권장 조치 내용을 확인합니다.</p>
+        </div>
+        <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildDashboardHref(repo, vm.analysis_id)} />}>대시보드 보기</Button>
       </div>
-      <div className="stat-box bars">
-        <div className="stat-label">취약점 분포</div>
-        {distribution.map((item) => <div className="bar-row" key={item.category}><span>{item.category}</span><div><i style={{ width: `${Math.round((item.count / maxCount) * 100)}%` }} /></div><b>{item.count}</b></div>)}
+
+      <div className="dashboard-kpi-grid">
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>검사 시간</span><strong className="small-value">{vm.scan_date}</strong></CardContent></Card>
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>발견된 취약점</span><strong className="danger-text">{vm.total_vulnerabilities}</strong></CardContent></Card>
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>분석된 파일</span><strong>{vm.files_analyzed}</strong></CardContent></Card>
+        <Card className="dashboard-card"><CardContent className="dashboard-kpi"><span>영향 파일</span><strong>{vm.affected_files}</strong></CardContent></Card>
       </div>
-      {vm.call_graph.available ? (
-        <div className="stat-box call-graph">
-          <div className="call-header"><span>호출 그래프</span><span>노드 {vm.call_graph.node_count.toLocaleString()} · 엣지 {vm.call_graph.edge_count.toLocaleString()}</span></div>
-          <div className="call-preview">{vm.call_graph.preview.length ? vm.call_graph.preview.map((item) => <span key={item}>{item}</span>) : <span className="muted">표시할 호출 그래프 미리보기가 없습니다.</span>}</div>
-        </div>
-      ) : null}
-      {vm.llm_report.text ? (
-        <div className="stat-box llm-report">
-          <div className="llm-report-header"><span>LLM 보안 리포트</span>{vm.llm_report.model ? <span>{vm.llm_report.model}</span> : null}</div>
-          <pre>{vm.llm_report.text}</pre>
-        </div>
-      ) : vm.llm_report.status === 'failed' ? (
-        <div className="stat-box llm-report unavailable">
-          <div className="llm-report-header"><span>LLM 보안 리포트</span><span>생성 실패</span></div>
-          <p>{vm.llm_report.error ?? 'LLM 리포트 생성에 실패했습니다.'}</p>
-        </div>
-      ) : null}
-      {[...grouped.entries()].length ? [...grouped.entries()].map(([type, items]) => (
-        <details className="vgroup" key={type}>
-          <summary><span className={`vtype-icon level-${items[0].severity}`}>{TYPE_ICONS[type] ?? '⚠'}</span><b>{type}</b><span className={`level-badge level-${items[0].severity}`}>{items[0].severity}</span><span>총 {items.length}건 발견됨</span></summary>
-          {items.map((detail) => (
-            <article className="vitem" key={detail.id || `${detail.file}-${detail.line}-${detail.type}`}>
-              <div className="vitem-header"><span>📄 {detail.file}{detail.function ? <em> ⚙ {String(detail.function)}</em> : null}</span><span>Line {detail.line ?? '-'} <b className={`level-badge level-${detail.severity}`}>{detail.severity}</b></span></div>
-              <div className="metadata">{[detail.cwe ? `CWE: ${detail.cwe}` : '', detail.cvss_score !== undefined ? `CVSS: ${detail.cvss_score}` : '', detail.cvss_vector ? String(detail.cvss_vector) : '', detail.confidence ? `신뢰도: ${detail.confidence}` : ''].filter(Boolean).join(' · ')}</div>
-              <pre className="vitem-code">{codeLines(detail.code, detail.line).map((line) => <code key={line.number} className={line.active ? 'active' : ''}><span>{line.number}</span>{line.text}</code>)}</pre>
-              <div className="vitem-bottom"><div className="vitem-callpath"><b>호출 경로</b>{detail.call_chain.length ? detail.call_chain.map((node) => <span key={node}>{node}</span>) : <span className="muted">호출 경로 정보 없음</span>}</div><div className="vitem-right"><div className="problem"><b>⚠ 문제점</b><p>{detail.description}</p></div><div className="fix"><b>◎ 해결 방법</b><pre>{detail.fix}</pre></div>{detail.safe_example ? <div className="fix"><b>✓ 안전한 예시</b><pre>{String(detail.safe_example)}</pre></div> : null}</div></div>
-            </article>
-          ))}
-        </details>
-      )) : <div className="stat-box empty-row">발견된 취약점이 없습니다.</div>}
+
+      <div className="dashboard-summary-stack">
+          <div className="analysis-overview-grid">
+            <Card className="dashboard-card">
+              <CardContent className="dashboard-card-content">
+                <div className="dashboard-card-header"><span>취약점 분포</span><Badge variant="outline">{distribution.length}개 유형</Badge></div>
+                <div className="analysis-bars">
+                  {distribution.map((item) => (
+                    <div className="bar-row" key={item.category}>
+                      <span>{item.category}</span>
+                      <div><i style={{ width: `${Math.round((item.count / maxCount) * 100)}%` }} /></div>
+                      <b>{item.count}</b>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {vm.call_graph.available ? (
+              <Card className="dashboard-card">
+                <CardContent className="dashboard-card-content">
+                  <div className="dashboard-card-header"><span>호출 그래프</span><Badge variant="outline">노드 {vm.call_graph.node_count.toLocaleString()} · 엣지 {vm.call_graph.edge_count.toLocaleString()}</Badge></div>
+                  <div className="call-preview">{vm.call_graph.preview.length ? vm.call_graph.preview.map((item) => <span key={item}>{item}</span>) : <span className="dashboard-muted">표시할 호출 그래프 미리보기가 없습니다.</span>}</div>
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+
+          {vm.llm_report.text ? (
+            <Card className="dashboard-card llm-report">
+              <CardContent className="dashboard-card-content">
+                <div className="llm-report-header"><span>LLM 보안 리포트</span>{vm.llm_report.model ? <span>{vm.llm_report.model}</span> : null}</div>
+                <MarkdownContent content={vm.llm_report.text} />
+              </CardContent>
+            </Card>
+          ) : vm.llm_report.status === 'failed' ? (
+            <Card className="dashboard-card llm-report unavailable">
+              <CardContent className="dashboard-card-content">
+                <div className="llm-report-header"><span>LLM 보안 리포트</span><span>생성 실패</span></div>
+                <p>{vm.llm_report.error ?? 'LLM 리포트 생성에 실패했습니다.'}</p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {[...grouped.entries()].length ? [...grouped.entries()].map(([type, items]) => (
+            <details className="vgroup analysis-vgroup" key={type}>
+              <summary><b>{type}</b><span className={`level-badge level-${items[0].severity}`}>{items[0].severity}</span><span>총 {items.length}건 발견됨</span></summary>
+              {items.map((detail) => (
+                <article className="vitem" key={detail.id || `${detail.file}-${detail.line}-${detail.type}`}>
+                  <div className="vitem-header"><span>{detail.file}{detail.function ? <em> · {String(detail.function)}</em> : null}</span><span>Line {detail.line ?? '-'} <b className={`level-badge level-${detail.severity}`}>{detail.severity}</b></span></div>
+                  <div className="metadata">{[detail.cwe ? `CWE: ${detail.cwe}` : '', detail.cvss_score !== undefined ? `CVSS: ${detail.cvss_score}` : '', detail.cvss_vector ? String(detail.cvss_vector) : '', detail.confidence ? `신뢰도: ${detail.confidence}` : ''].filter(Boolean).join(' · ')}</div>
+                  <pre className="vitem-code">{codeLines(detail.code, detail.line).map((line) => <code key={line.number} className={line.active ? 'active' : ''}><span>{line.number}</span>{line.text}</code>)}</pre>
+                  <div className="vitem-bottom"><div className="vitem-callpath"><b>호출 경로</b>{detail.call_chain.length ? detail.call_chain.map((node) => <span key={node}>{node}</span>) : <span className="dashboard-muted">호출 경로 정보 없음</span>}</div><div className="vitem-right"><div className="problem"><b>문제점</b><p>{detail.description}</p></div><div className="fix"><b>해결 방법</b><pre>{detail.fix}</pre></div>{detail.safe_example ? <div className="fix"><b>안전한 예시</b><pre>{String(detail.safe_example)}</pre></div> : null}</div></div>
+                </article>
+              ))}
+            </details>
+          )) : <Card className="dashboard-card"><CardContent className="dashboard-card-content empty-row">발견된 취약점이 없습니다.</CardContent></Card>}
+      </div>
     </section>
   );
 }

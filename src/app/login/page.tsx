@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
 import { LogoutButton } from '@/components/layout/LogoutButton';
-import { BACKEND_BASE_URL, getOptionalCurrentUser } from '@/lib/server/backend';
+import { PUBLIC_BACKEND_BASE_URL, getOptionalCurrentUser } from '@/lib/server/backend';
 import { safeReturnTo } from '@/lib/routes';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: Props) {
   const returnTo = safeReturnTo(first(params.return_to), '/');
   const error = first(params.auth_error) ?? first(params.error);
   if (user && first(params.autoredirect) === '1') redirect(returnTo);
-  const loginUrl = `${BACKEND_BASE_URL}/auth/github`;
+  const loginUrl = `${PUBLIC_BACKEND_BASE_URL}/auth/github`;
 
   return (
     <Shell user={user} active="login">

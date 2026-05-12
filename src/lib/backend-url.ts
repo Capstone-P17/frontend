@@ -1,1 +1,3 @@
-export const BACKEND_BASE_URL = (process.env.BACKEND_BASE_URL ?? 'http://localhost:8000').replace(/\/+$/, '');
+export const PUBLIC_BACKEND_BASE_URL = (
+  process.env.NEXT_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:8000'
+).replace(/\/+$/, '');

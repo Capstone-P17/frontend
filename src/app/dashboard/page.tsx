@@ -23,6 +23,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   const result = await getAnalysisResult(analysisId);
   const vm = buildDashboardViewModel(result);
   const repo = vm.repo_url || requestedRepo;
-  const recent = buildRecentResultsViewModel(await listResults(5).catch(() => ({})));
-  return <Shell user={user} active="dashboard" repo={repo} analysisId={vm.analysis_id || analysisId} recentResults={recent} showSidebar><DashboardView vm={vm} repo={repo} analysisId={vm.analysis_id || analysisId} /></Shell>;
+  const recent = buildRecentResultsViewModel(await listResults(8).catch(() => ({})));
+  return <Shell user={user} active="dashboard" repo={repo} analysisId={vm.analysis_id || analysisId} recentResults={recent} showAnalysisPanel><DashboardView vm={vm} repo={repo} analysisId={vm.analysis_id || analysisId} /></Shell>;
 }

@@ -2,10 +2,10 @@ import 'server-only';
 
 import { cookies, headers } from 'next/headers';
 import { BackendError, extractBackendMessage } from './errors';
-import { BACKEND_BASE_URL } from '@/lib/backend-url';
+import { PUBLIC_BACKEND_BASE_URL } from '@/lib/backend-url';
 import type { User } from '@/lib/types';
 
-export { BACKEND_BASE_URL };
+export { PUBLIC_BACKEND_BASE_URL };
 export type RequestQuery = Record<string, string | number | boolean | null | undefined>;
 
 export type BackendRequestOptions = {
@@ -17,7 +17,7 @@ export type BackendRequestOptions = {
 };
 
 function buildUrl(path: string, query?: RequestQuery): string {
-  const url = new URL(`${BACKEND_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
+  const url = new URL(`${PUBLIC_BACKEND_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value));

@@ -1,14 +1,9 @@
 import Link from 'next/link';
+import { AnalysisSidePanel } from '@/components/layout/AnalysisSidePanel';
 import { AuthMenu } from '@/components/layout/AuthMenu';
-import { BACKEND_BASE_URL } from '@/lib/backend-url';
-import { buildAnalysisHref, buildDashboardHref } from '@/lib/routes';
+import { PUBLIC_BACKEND_BASE_URL } from '@/lib/backend-url';
 import type { User } from '@/lib/types';
-
-type RecentResult = {
-  analysis_id: string;
-  repository: string;
-  total_vulnerabilities: number;
-};
+import type { RecentResultsViewModel } from '@/lib/view-models/analysis';
 
 type ShellProps = {
   user?: User | null;
@@ -16,12 +11,12 @@ type ShellProps = {
   active?: 'home' | 'dashboard' | 'analysis' | 'login' | 'loading';
   repo?: string;
   analysisId?: string | null;
-  recentResults?: RecentResult[];
-  showSidebar?: boolean;
+  recentResults?: RecentResultsViewModel;
+  showAnalysisPanel?: boolean;
 };
 
 export function Header({ user }: { user?: User | null }) {
-  const loginUrl = `${BACKEND_BASE_URL}/auth/github`;
+  const loginUrl = `${PUBLIC_BACKEND_BASE_URL}/auth/github`;
 
   return (
     <header className="navbar">
@@ -35,33 +30,9 @@ export function Header({ user }: { user?: User | null }) {
   );
 }
 
-export function Sidebar({ active, repo, analysisId, recentResults = [] }: Pick<ShellProps, 'active' | 'repo' | 'analysisId' | 'recentResults'>) {
-  const repoValue = repo ?? '';
+export function Footer({ withAnalysisPanel = false }: { withAnalysisPanel?: boolean }) {
   return (
-    <aside className="p17-sidebar">
-      <div className="p17-sidebar-header"><span className="p17-sidebar-logo">P17</span></div>
-      {repoValue ? <div className="p17-sidebar-url">{repoValue}</div> : null}
-      <Link className={`p17-nav-btn ${active === 'home' ? 'active' : ''}`} href="/">메인페이지</Link>
-      <Link className={`p17-nav-btn ${active === 'dashboard' ? 'active' : ''}`} href={buildDashboardHref(repoValue, analysisId)}>대시보드</Link>
-      <Link className={`p17-nav-btn ${active === 'analysis' ? 'active' : ''}`} href={buildAnalysisHref(repoValue, analysisId)}>상세 분석</Link>
-      {recentResults.length > 0 ? (
-        <div className="recent-box">
-          <div className="recent-title">최근 분석</div>
-          {recentResults.map((item) => (
-            <Link key={item.analysis_id} className="recent-link" href={buildDashboardHref(item.repository, item.analysis_id)}>
-              <span>{item.repository}</span>
-              <b>{item.total_vulnerabilities}건</b>
-            </Link>
-          ))}
-        </div>
-      ) : null}
-    </aside>
-  );
-}
-
-export function Footer() {
-  return (
-    <footer className="footer">
+    <footer className={withAnalysisPanel ? 'footer with-analysis-panel' : 'footer'}>
       <div className="footer-inner">
         <span className="footer-logo">P17</span>
         <a className="footer-link" href="https://github.com/Capstone-P17" target="_blank" rel="noreferrer">
@@ -72,13 +43,13 @@ export function Footer() {
   );
 }
 
-export function Shell({ user, children, active = 'home', repo, analysisId, recentResults, showSidebar = false }: ShellProps) {
+export function Shell({ user, children, active = 'home', repo, analysisId, recentResults, showAnalysisPanel = false }: ShellProps) {
   return (
     <>
       <Header user={user} />
-      {showSidebar ? <Sidebar active={active} repo={repo} analysisId={analysisId} recentResults={recentResults} /> : null}
-      <main className={showSidebar ? 'page-main with-sidebar' : 'page-main'}>{children}</main>
-      <Footer />
+      {showAnalysisPanel ? <AnalysisSidePanel active={active} repo={repo} analysisId={analysisId} recentResults={recentResults} /> : null}
+      <main className={showAnalysisPanel ? 'page-main with-analysis-panel' : 'page-main'}>{children}</main>
+      <Footer withAnalysisPanel={showAnalysisPanel} />
     </>
   );
 }
