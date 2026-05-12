@@ -65,15 +65,18 @@ describe('architecture boundaries', () => {
     expect(source).toContain('event.preventDefault()');
   });
 
-  it('polls loading jobs server-side without relying on client hydration', () => {
+  it('creates missing loading jobs server-side and polls internally without page refresh', () => {
     const pageSource = fs.readFileSync(path.join(root, 'src/app/loading/page.tsx'), 'utf8');
+    const clientSource = fs.readFileSync(path.join(root, 'src/components/loading/LoadingClient.tsx'), 'utf8');
     expect(pageSource).toContain('createAnalysisJob(repo)');
-    expect(pageSource).toContain('getAnalysisJob(jobId)');
     expect(pageSource).toContain('job_id=${encodeURIComponent(createdJobId)}');
-    expect(pageSource).toContain('<meta httpEquiv="refresh"');
-    expect(pageSource).toContain('&poll=${nextPoll}');
-    expect(pageSource).toContain('Polling:');
-    expect(pageSource).not.toContain('LoadingClient');
+    expect(pageSource).toContain('LoadingClient');
+    expect(pageSource).not.toContain('<meta httpEquiv="refresh"');
+    expect(clientSource).toContain('window.setInterval');
+    expect(clientSource).toContain('결과를 기다리는 중입니다.');
+    expect(clientSource).toContain('분석이 완료되었습니다.');
+    expect(clientSource).toContain('결과 페이지로 이동 중입니다...');
+    expect(clientSource).not.toContain('Polling:');
   });
 
   it('logout route expires auth cookies on the Next response', () => {

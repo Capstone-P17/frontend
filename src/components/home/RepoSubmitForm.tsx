@@ -2,8 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type Props = { isLoggedIn: boolean };
+
+const SAMPLE_REPOSITORY_URL = 'https://github.com/Capstone-P17/backend';
 
 export function RepoSubmitForm({ isLoggedIn }: Props) {
   const router = useRouter();
@@ -11,10 +15,9 @@ export function RepoSubmitForm({ isLoggedIn }: Props) {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function startAnalysis(url: string) {
     setError('');
-    const trimmed = repo.trim();
+    const trimmed = url.trim();
     if (!trimmed) {
       setError('URL을 입력해주세요');
       return;
@@ -27,10 +30,18 @@ export function RepoSubmitForm({ isLoggedIn }: Props) {
     router.push(`/loading?repo=${encodeURIComponent(trimmed)}`);
   }
 
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    startAnalysis(repo);
+  }
+
   return (
     <form className="repo-form" action="/loading" method="get" onSubmit={submit}>
-      <input name="repo" value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" />
-      <button type="submit" disabled={pending}>{pending ? '...' : '✓'}</button>
+      <Input className="h-12 border-white/10 bg-white/10 px-4 text-base text-white placeholder:text-white/45 focus-visible:border-cyan-300 focus-visible:ring-cyan-300/25" name="repo" value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" />
+      <Button className="h-12 rounded-lg bg-cyan-400 px-6 text-sm font-bold text-slate-950 hover:bg-cyan-300" type="submit" size="lg" disabled={pending}>{pending ? '분석 준비 중' : '분석 시작'}</Button>
+      <Button className="repo-sample-button" type="button" variant="secondary" disabled={pending} onClick={() => startAnalysis(SAMPLE_REPOSITORY_URL)}>
+        P17 backend 샘플 분석해보기
+      </Button>
       {error ? <p className="form-error">{error}</p> : null}
     </form>
   );

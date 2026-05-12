@@ -2,9 +2,10 @@ import 'server-only';
 
 import { cookies, headers } from 'next/headers';
 import { BackendError, extractBackendMessage } from './errors';
+import { BACKEND_BASE_URL } from '@/lib/backend-url';
 import type { User } from '@/lib/types';
 
-export const BACKEND_BASE_URL = (process.env.BACKEND_BASE_URL ?? 'http://localhost:8000').replace(/\/+$/, '');
+export { BACKEND_BASE_URL };
 export type RequestQuery = Record<string, string | number | boolean | null | undefined>;
 
 export type BackendRequestOptions = {

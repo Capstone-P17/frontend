@@ -1,0 +1,113 @@
+'use client';
+
+import { ReactNode, useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+
+type FeatureSlide = {
+  title: string;
+  description: string;
+  badge: string;
+  preview: ReactNode;
+};
+
+const slides: FeatureSlide[] = [
+  {
+    title: '취약점 탐지',
+    description: 'Java AST 기반 정적 분석으로 SQL Injection, XSS, 하드코딩된 비밀번호 등을 탐지합니다.',
+    badge: 'Detection',
+    preview: (
+      <div className="mock-finding-view">
+        <div className="mock-stat-row"><div><span>분석 파일</span><b>128</b></div><div><span>취약점</span><b className="preview-danger">9</b></div><div><span>위험도</span><b>HIGH</b></div></div>
+        <div className="mock-vuln-card">
+          <div className="mock-vuln-head"><b>SQL Injection</b><span className="preview-danger">HIGH</span></div>
+          <p>UserRepository.java:42</p>
+          <code>executeQuery(&quot;SELECT ...&quot; + userId)</code>
+        </div>
+        <div className="mock-vuln-card muted"><div className="mock-vuln-head"><b>Hardcoded Secret</b><span className="preview-warning">MEDIUM</span></div><p>application.yml:12</p></div>
+      </div>
+    ),
+  },
+  {
+    title: '시각화된 결과',
+    description: '취약점이 발견된 파일과 라인, 위험도, 호출 흐름을 대시보드로 제공합니다.',
+    badge: 'Dashboard',
+    preview: (
+      <div className="mock-dashboard-view">
+        <div className="mock-score"><span>Security Score</span><b>72</b><small>/ 100</small></div>
+        <div className="mock-bars">
+          <div><span>Critical</span><i style={{ width: '28%' }} /></div>
+          <div><span>High</span><i style={{ width: '62%' }} /></div>
+          <div><span>Medium</span><i style={{ width: '44%' }} /></div>
+        </div>
+        <div className="mock-callgraph"><span>Controller</span><em /> <span>Service</span><em /> <span>Repository</span></div>
+      </div>
+    ),
+  },
+  {
+    title: 'AI 수정 제안',
+    description: '탐지는 rule-based로 수행하고, 리포트/설명 보조에 한해 AI 사용 가능성을 제공합니다.',
+    badge: 'Report',
+    preview: (
+      <div className="mock-report-view">
+        <div className="mock-report-title">AI Remediation Report</div>
+        <p>사용자 입력값이 SQL 쿼리에 직접 연결되고 있습니다. PreparedStatement 기반 파라미터 바인딩으로 변경하세요.</p>
+        <pre>{`String sql = "SELECT * FROM users WHERE id = ?";\nPreparedStatement ps = conn.prepareStatement(sql);\nps.setString(1, userId);`}</pre>
+      </div>
+    ),
+  },
+];
+
+export function FeatureCarousel() {
+  const [api, setApi] = useState<CarouselApi>();
+  const [selected, setSelected] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    const updateSelected = () => setSelected(api.selectedScrollSnap());
+    updateSelected();
+    api.on('select', updateSelected);
+    return () => {
+      api.off('select', updateSelected);
+    };
+  }, [api]);
+
+  useEffect(() => {
+    if (!api) return;
+    const timer = window.setInterval(() => {
+      if (api.canScrollNext()) api.scrollNext();
+      else api.scrollTo(0);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [api]);
+
+  return (
+    <section className="feature-carousel-section" aria-label="주요 기능">
+      <Carousel setApi={setApi} opts={{ align: 'start', loop: true }} className="feature-carousel">
+        <CarouselContent>
+          {slides.map((slide) => (
+            <CarouselItem key={slide.title}>
+              <Card className="feature-carousel-card">
+                <CardContent className="feature-carousel-content">
+                  <div className="feature-carousel-copy">
+                    <Badge className="feature-carousel-badge" variant="outline">{slide.badge}</Badge>
+                    <h2>{slide.title}</h2>
+                    <p>{slide.description}</p>
+                  </div>
+                  <div className="feature-preview" aria-hidden="true">
+                    <div className="feature-preview-toolbar"><span /><span /><span /></div>
+                    <div className="feature-preview-body">{slide.preview}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      <div className="feature-carousel-dots" aria-hidden="true">
+        {slides.map((slide, index) => <span key={slide.title} className={index === selected ? 'active' : ''} />)}
+      </div>
+    </section>
+  );
+}

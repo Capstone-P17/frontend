@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { AuthMenu } from '@/components/layout/AuthMenu';
+import { BACKEND_BASE_URL } from '@/lib/backend-url';
 import { buildAnalysisHref, buildDashboardHref } from '@/lib/routes';
 import type { User } from '@/lib/types';
 
@@ -18,24 +20,16 @@ type ShellProps = {
   showSidebar?: boolean;
 };
 
-function userLabel(user?: User | null): string {
-  return user?.github_login ?? user?.display_name ?? user?.email ?? '사용자';
-}
-
 export function Header({ user }: { user?: User | null }) {
+  const loginUrl = `${BACKEND_BASE_URL}/auth/github`;
+
   return (
     <header className="navbar">
-      <Link className="navbar-logo" href="/">P17</Link>
-      <a href="#team">팀 소개</a>
-      <div className="navbar-right">
-        {user ? (
-          <>
-            <span className="user-name">{userLabel(user)}</span>
-            <Link className="navbar-login" href="/login">계정</Link>
-          </>
-        ) : (
-          <Link className="navbar-login" href="/login">로그인</Link>
-        )}
+      <div className="navbar-inner">
+        <Link className="navbar-logo" href="/">P17</Link>
+        <div className="navbar-right">
+          <AuthMenu user={user} loginUrl={loginUrl} />
+        </div>
       </div>
     </header>
   );
@@ -67,12 +61,12 @@ export function Sidebar({ active, repo, analysisId, recentResults = [] }: Pick<S
 
 export function Footer() {
   return (
-    <footer className="footer" id="team">
-      <span className="footer-logo">P17</span>
-      <div>
-        <p>담당자 P17</p>
-        <p>이메일 AAA@AAA.COM</p>
-        <p>전화번호 010-0000-0000</p>
+    <footer className="footer">
+      <div className="footer-inner">
+        <span className="footer-logo">P17</span>
+        <a className="footer-link" href="https://github.com/Capstone-P17" target="_blank" rel="noreferrer">
+          github.com/Capstone-P17
+        </a>
       </div>
     </footer>
   );
