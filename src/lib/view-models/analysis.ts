@@ -200,6 +200,8 @@ export function buildAnalysisDetailViewModel(response: Dict) {
   const vulnerabilities = asArray(analysis.vulnerabilities);
   const summary = asRecord(analysis.summary);
   const byType = asRecord(summary.by_type);
+  const llmReport = typeof analysis.llm_report === 'string' ? analysis.llm_report.trim() : '';
+  const llmStatus = String(analysis.llm_report_status ?? (llmReport ? 'generated' : 'unavailable'));
   return {
     analysis_id: analysisId,
     repo_url: String(analysis.repository ?? ''),
@@ -210,5 +212,12 @@ export function buildAnalysisDetailViewModel(response: Dict) {
     call_graph: buildCallGraphView(analysis.call_graph),
     vuln_distribution: Object.entries(byType).map(([category, count]) => ({ category: vulnerabilityTypeToDisplayName(category), count: toInt(count) })).filter((item) => item.count > 0),
     vuln_details: vulnerabilities.map(buildVulnerabilityDetail),
+    llm_report: {
+      text: llmReport,
+      status: llmStatus,
+      available: Boolean(analysis.llm_report_available ?? llmReport),
+      model: analysis.llm_model ? String(analysis.llm_model) : null,
+      error: analysis.llm_report_error ? String(analysis.llm_report_error) : null,
+    },
   };
 }

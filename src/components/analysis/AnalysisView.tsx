@@ -42,6 +42,17 @@ export function AnalysisView({ vm, repo }: { vm: AnalysisDetailViewModel; repo: 
           <div className="call-preview">{vm.call_graph.preview.length ? vm.call_graph.preview.map((item) => <span key={item}>{item}</span>) : <span className="muted">표시할 호출 그래프 미리보기가 없습니다.</span>}</div>
         </div>
       ) : null}
+      {vm.llm_report.text ? (
+        <div className="stat-box llm-report">
+          <div className="llm-report-header"><span>LLM 보안 리포트</span>{vm.llm_report.model ? <span>{vm.llm_report.model}</span> : null}</div>
+          <pre>{vm.llm_report.text}</pre>
+        </div>
+      ) : vm.llm_report.status === 'failed' ? (
+        <div className="stat-box llm-report unavailable">
+          <div className="llm-report-header"><span>LLM 보안 리포트</span><span>생성 실패</span></div>
+          <p>{vm.llm_report.error ?? 'LLM 리포트 생성에 실패했습니다.'}</p>
+        </div>
+      ) : null}
       {[...grouped.entries()].length ? [...grouped.entries()].map(([type, items]) => (
         <details className="vgroup" key={type}>
           <summary><span className={`vtype-icon level-${items[0].severity}`}>{TYPE_ICONS[type] ?? '⚠'}</span><b>{type}</b><span className={`level-badge level-${items[0].severity}`}>{items[0].severity}</span><span>총 {items.length}건 발견됨</span></summary>

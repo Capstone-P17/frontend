@@ -16,6 +16,10 @@ export const analysisResult = {
       { id: 'v3', type: 'XSS', severity: 'MEDIUM', file: 'src/B.java', line: 20, safe_example: 'escape(input)' },
     ],
     call_graph: { nodes: [{ id: 'controller' }, { id: 'service' }], edges: [{ source: 'controller', target: 'service' }] },
+    llm_report: '전체 요약\n정적 분석 결과를 바탕으로 한 LLM 리포트입니다.',
+    llm_report_status: 'generated',
+    llm_report_available: true,
+    llm_model: 'test-model',
   },
 };
 

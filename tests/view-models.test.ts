@@ -22,6 +22,8 @@ describe('analysis view model parity', () => {
   it('maps vulnerability detail fields with legacy contract parity', () => {
     const vm = buildAnalysisDetailViewModel(analysisResult);
     expect(vm.call_graph).toEqual({ available: true, node_count: 2, edge_count: 1, preview: ['controller → service'] });
+    expect(vm.llm_report).toMatchObject({ status: 'generated', available: true, model: 'test-model' });
+    expect(vm.llm_report.text).toContain('LLM 리포트입니다.');
     expect(vm.vuln_distribution).toContainEqual({ category: 'SQL Injection', count: 2 });
     expect(vm.vuln_details[0]).toMatchObject({ severity: '위험', cvss_score: 8.1, cvss_vector: 'CVSS:3.1', call_chain: ['Controller', 'DAO'] });
     expect(vm.vuln_details[1]).toMatchObject({ severity: '치명적', cvss_score: 9.1, description: '취약점 설명이 없습니다.', fix: '취약점에 적합한 보안 패턴을 적용하세요.' });
