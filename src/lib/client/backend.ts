@@ -27,6 +27,50 @@ function buildUrl(path: string, query?: RequestQuery): string {
   return url.toString();
 }
 
+export function buildReportDownloadFilename(analysisId: string): string {
+  const prefix = analysisId.trim().slice(0, 8);
+  return `report-${prefix || 'analysis'}.pdf`;
+}
+
+function cleanDownloadFilename(filename: string): string | null {
+  const clean = filename.trim().replace(/[\u0000-\u001f\u007f/\\]/g, '_');
+  if (!clean || clean === '.' || clean === '..') return null;
+  return clean;
+}
+
+function decodeRfc5987Filename(value: string): string | null {
+  const match = value.match(/^([^']*)'[^']*'(.*)$/);
+  if (!match) return null;
+  const [, charset, encodedFilename] = match;
+  if (charset && charset.toLowerCase() !== 'utf-8') return null;
+  try {
+    return decodeURIComponent(encodedFilename);
+  } catch {
+    return null;
+  }
+}
+
+function unquoteHeaderValue(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) return trimmed.slice(1, -1).replace(/\\(["\\])/g, '$1');
+  return trimmed;
+}
+
+export function filenameFromContentDisposition(contentDisposition: string | null): string | null {
+  if (!contentDisposition) return null;
+
+  const encodedMatch = contentDisposition.match(/(?:^|;)\s*filename\*\s*=\s*("[^"]*"|[^;]+)/i);
+  if (encodedMatch) {
+    const decoded = decodeRfc5987Filename(unquoteHeaderValue(encodedMatch[1]));
+    const clean = decoded ? cleanDownloadFilename(decoded) : null;
+    if (clean) return clean;
+  }
+
+  const plainMatch = contentDisposition.match(/(?:^|;)\s*filename\s*=\s*("(?:\\["\\]|[^"])*"|[^;]+)/i);
+  if (!plainMatch) return null;
+  return cleanDownloadFilename(unquoteHeaderValue(plainMatch[1]));
+}
+
 export async function clientBackendRequest<T>(path: string, options: ClientBackendRequestOptions = {}): Promise<T> {
   const method = options.method ?? (options.body === undefined ? 'GET' : 'POST');
   const requestHeaders = new Headers({ Accept: 'application/json' });
@@ -85,4 +129,37 @@ export async function getAnalysisResultClient(analysisId?: string | null): Promi
 
 export async function listResultsClient(limit = 5): Promise<Record<string, unknown>> {
   return clientBackendRequest<Record<string, unknown>>('/results', { query: { limit } });
+}
+
+export async function downloadReportClient(analysisId: string): Promise<void> {
+  const trimmedAnalysisId = analysisId.trim();
+  if (!trimmedAnalysisId) throw new BackendError(400, 'PDF를 다운로드할 분석 ID가 없습니다.');
+
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(`/report/${encodeURIComponent(trimmedAnalysisId)}`), {
+      method: 'GET',
+      headers: { Accept: 'application/pdf' },
+      credentials: 'include',
+      cache: 'no-store',
+    });
+  } catch (error) {
+    throw new BackendError(0, `백엔드에 연결할 수 없습니다: ${String(error)}`);
+  }
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') ?? '';
+    const body = contentType.includes('json') ? await response.json().catch(() => null) : await response.text().catch(() => '');
+    throw new BackendError(response.status, extractBackendMessage(body, 'PDF 다운로드에 실패했습니다.'), body);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filenameFromContentDisposition(response.headers.get('content-disposition')) ?? buildReportDownloadFilename(trimmedAnalysisId);
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
 }

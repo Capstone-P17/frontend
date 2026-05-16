@@ -64,5 +64,5 @@ export function AnalysisClient() {
   }
 
   const currentAnalysisId = vm.analysis_id || analysisId;
-  return <Shell user={user} active="analysis" repo={repo} analysisId={currentAnalysisId} recentResults={recent} showAnalysisPanel><AnalysisView vm={vm} repo={repo} /></Shell>;
+  return <Shell user={user} active="analysis" repo={repo} analysisId={currentAnalysisId} recentResults={recent} showAnalysisPanel><AnalysisView vm={vm} repo={repo} analysisId={currentAnalysisId} /></Shell>;
 }

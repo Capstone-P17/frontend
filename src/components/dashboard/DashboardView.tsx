@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
+import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,7 +52,10 @@ export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel
           <h1>보안 취약점 분석 결과</h1>
           <p>{repo || '분석 대상 저장소'}에 대한 정적 분석 결과를 요약했습니다.</p>
         </div>
-        <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildAnalysisHref(repo, currentAnalysisId)} />}>상세 분석 보기</Button>
+        <div className="dashboard-hero-actions">
+          <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildAnalysisHref(repo, currentAnalysisId)} />}>상세 분석 보기</Button>
+          <ReportDownloadButton analysisId={currentAnalysisId} className="dashboard-secondary-action" />
+        </div>
       </div>
 
       <div className="dashboard-kpi-grid">

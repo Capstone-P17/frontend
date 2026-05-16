@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, FileSearch, GitBranch, LayoutDashboard, ListChecks, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { buildAnalysisHref, buildDashboardHref } from '@/lib/routes';
@@ -69,6 +70,8 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, recentResults
             <span>상세 분석</span>
           </Link>
         </nav>
+
+        <ReportDownloadButton analysisId={analysisId} className="analysis-side-download" />
 
         <div className="analysis-side-list-header">
           <span><ListChecks aria-hidden="true" size={16} /> 분석 목록</span>

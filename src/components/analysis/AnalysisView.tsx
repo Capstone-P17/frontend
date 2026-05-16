@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MarkdownContent } from '@/components/analysis/MarkdownContent';
+import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,10 +14,11 @@ function codeLines(code: string, line: number | null) {
   return lines.map((text, index) => ({ number: start + index, text, active: start + index === safeLine }));
 }
 
-export function AnalysisView({ vm, repo }: { vm: AnalysisDetailViewModel; repo: string }) {
+export function AnalysisView({ vm, repo, analysisId }: { vm: AnalysisDetailViewModel; repo: string; analysisId?: string | null }) {
   const distribution = vm.vuln_distribution.length ? vm.vuln_distribution : [{ category: '취약점', count: 0 }];
   const maxCount = Math.max(1, ...distribution.map((item) => item.count));
   const grouped = new Map<string, typeof vm.vuln_details>();
+  const currentAnalysisId = vm.analysis_id || analysisId;
   for (const detail of vm.vuln_details) grouped.set(detail.type, [...(grouped.get(detail.type) ?? []), detail]);
 
   return (
@@ -27,7 +29,10 @@ export function AnalysisView({ vm, repo }: { vm: AnalysisDetailViewModel; repo: 
           <h1>상세 보안취약점 분석</h1>
           <p>{repo || '분석 대상 저장소'}에서 발견된 취약점의 코드, 호출 경로, 권장 조치 내용을 확인합니다.</p>
         </div>
-        <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildDashboardHref(repo, vm.analysis_id)} />}>대시보드 보기</Button>
+        <div className="dashboard-hero-actions">
+          <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildDashboardHref(repo, currentAnalysisId)} />}>대시보드 보기</Button>
+          <ReportDownloadButton analysisId={currentAnalysisId} className="dashboard-secondary-action" />
+        </div>
       </div>
 
       <div className="dashboard-kpi-grid">

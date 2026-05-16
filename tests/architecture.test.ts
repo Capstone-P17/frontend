@@ -57,6 +57,16 @@ describe('architecture boundaries', () => {
     expect(source).toContain('`/result/${encodeURIComponent(analysisId)}`');
   });
 
+  it('downloads PDF reports directly from the backend with cookie credentials', () => {
+    const clientSource = fs.readFileSync(path.join(root, 'src/lib/client/backend.ts'), 'utf8');
+    const buttonSource = fs.readFileSync(path.join(root, 'src/components/analysis/ReportDownloadButton.tsx'), 'utf8');
+    expect(clientSource).toContain('`/report/${encodeURIComponent(trimmedAnalysisId)}`');
+    expect(clientSource).toContain("credentials: 'include'");
+    expect(clientSource).toContain("Accept: 'application/pdf'");
+    expect(clientSource).toContain('response.blob()');
+    expect(buttonSource).toContain('downloadReportClient(analysisId)');
+  });
+
   it('keeps the repository submit form usable before client hydration', () => {
     const source = fs.readFileSync(path.join(root, 'src/components/home/RepoSubmitForm.tsx'), 'utf8');
     expect(source).toContain('action="/loading"');
