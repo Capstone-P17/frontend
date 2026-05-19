@@ -75,6 +75,7 @@ export function buildDashboardViewModel(response: Dict) {
   const summary = asRecord(analysis.summary);
   const bySeverity = asRecord(summary.by_severity);
   const byType = asRecord(summary.by_type);
+  const byGuideCategory = asRecord(summary.by_guide_category);
   const score = asRecord(summary.score);
   const fileSummary = new Map<string, { count: number; severity: string; lines: Set<unknown> }>();
 
@@ -107,6 +108,9 @@ export function buildDashboardViewModel(response: Dict) {
       .map(([type, count]) => ({ type, name: vulnerabilityTypeToDisplayName(type), count: toInt(count) }))
       .filter((item) => item.count > 0)
       .sort((a, b) => a.type.localeCompare(b.type)),
+    guide_categories: Object.entries(byGuideCategory)
+      .map(([category, count]) => ({ category, count: toInt(count) }))
+      .filter((item) => item.count > 0),
     file_list: [...fileSummary.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([file, info]) => ({
       file,
       vuln: info.count,
@@ -182,6 +186,9 @@ function buildVulnerabilityDetail(vuln: Dict) {
     severity: severityToKoreanLabel(rawSeverity),
     raw_severity: rawSeverity,
     cwe: vuln.cwe,
+    guide_source: String(vuln.guide_source ?? ''),
+    guide_category: String(vuln.guide_category ?? ''),
+    guide_item: String(vuln.guide_item ?? ''),
     cvss_score: cvss.score,
     cvss_vector: cvss.vector,
     file: String(vuln.file ?? 'Unknown'),
@@ -201,6 +208,7 @@ export function buildAnalysisDetailViewModel(response: Dict) {
   const vulnerabilities = asArray(analysis.vulnerabilities);
   const summary = asRecord(analysis.summary);
   const byType = asRecord(summary.by_type);
+  const byGuideCategory = asRecord(summary.by_guide_category);
   const llmReport = typeof analysis.llm_report === 'string' ? analysis.llm_report.trim() : '';
   const llmStatus = String(analysis.llm_report_status ?? (llmReport ? 'generated' : 'unavailable'));
   return {
@@ -211,6 +219,7 @@ export function buildAnalysisDetailViewModel(response: Dict) {
     files_analyzed: toInt(analysis.files_analyzed),
     affected_files: new Set(vulnerabilities.map((vuln) => vuln.file).filter(Boolean)).size,
     call_graph: buildCallGraphView(analysis.call_graph),
+    guide_distribution: Object.entries(byGuideCategory).map(([category, count]) => ({ category, count: toInt(count) })).filter((item) => item.count > 0),
     vuln_distribution: Object.entries(byType).map(([category, count]) => ({ category: vulnerabilityTypeToDisplayName(category), count: toInt(count) })).filter((item) => item.count > 0),
     vuln_details: vulnerabilities.map(buildVulnerabilityDetail),
     llm_report: {

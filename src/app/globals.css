@@ -275,6 +275,9 @@ a { color: inherit; }
 .vgroup { background:rgba(57,62,70,.72); border:1px solid rgba(238,238,238,.12); border-radius:18px; overflow:hidden; box-shadow:0 14px 45px rgba(0,0,0,.14); } .vgroup summary { display:flex; gap:12px; align-items:center; padding:18px 22px; cursor:pointer; list-style:none; } .vgroup summary::-webkit-details-marker { display:none; } .vgroup summary b { margin-right:auto; }
 .vtype-icon { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; }
 .vitem { padding:18px 22px; border-top:1px solid rgba(238,238,238,.1); } .vitem-header { display:flex; justify-content:space-between; gap:16px; color:var(--text); font-weight:800; word-break:break-word; } .vitem-header em { color:var(--muted); font-style:normal; font-weight:700; }
+.guide-reference { display:grid; gap:6px; margin:12px 0; border:1px solid rgba(0,173,181,.24); border-radius:8px; background:rgba(0,173,181,.08); padding:12px 14px; }
+.guide-reference span { color:var(--muted); font-size:.82rem; line-height:1.5; }
+.guide-reference strong { color:#DDFBFD; line-height:1.45; word-break:keep-all; overflow-wrap:anywhere; }
 .vitem-code { background:#1a1e24; border-radius:8px; padding:10px 0; overflow-x:auto; } .vitem-code code { display:flex; gap:12px; padding:2px 12px; color:#e06c75; } .vitem-code code.active { background:rgba(255,69,69,.18); border-left:3px solid var(--danger); }
 .vitem-code span { color:#777; min-width:30px; text-align:right; }
 .vitem-bottom { display:grid; grid-template-columns:1fr 1.4fr; gap:16px; } .vitem-callpath, .problem, .fix { background:rgba(255,255,255,.04); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; } .problem { background:rgba(255,69,69,.1); } .fix { background:#1a1e24; } .fix pre { color:var(--normal); white-space:pre-wrap; }

@@ -15,8 +15,8 @@ function codeLines(code: string, line: number | null) {
 }
 
 export function AnalysisView({ vm, repo, analysisId }: { vm: AnalysisDetailViewModel; repo: string; analysisId?: string | null }) {
-  const distribution = vm.vuln_distribution.length ? vm.vuln_distribution : [{ category: '취약점', count: 0 }];
-  const maxCount = Math.max(1, ...distribution.map((item) => item.count));
+  const guideDistribution = vm.guide_distribution.length ? vm.guide_distribution : [{ category: '공식 가이드 매핑 없음', count: 0 }];
+  const guideMaxCount = Math.max(1, ...guideDistribution.map((item) => item.count));
   const grouped = new Map<string, typeof vm.vuln_details>();
   const currentAnalysisId = vm.analysis_id || analysisId;
   for (const detail of vm.vuln_details) grouped.set(detail.type, [...(grouped.get(detail.type) ?? []), detail]);
@@ -46,12 +46,12 @@ export function AnalysisView({ vm, repo, analysisId }: { vm: AnalysisDetailViewM
           <div className="analysis-overview-grid">
             <Card className="dashboard-card">
               <CardContent className="dashboard-card-content">
-                <div className="dashboard-card-header"><span>취약점 분포</span><Badge variant="outline">{distribution.length}개 유형</Badge></div>
+                <div className="dashboard-card-header"><span>가이드 대분류 분포</span><Badge variant="outline">{guideDistribution.length}개 분류</Badge></div>
                 <div className="analysis-bars">
-                  {distribution.map((item) => (
+                  {guideDistribution.map((item) => (
                     <div className="bar-row" key={item.category}>
                       <span>{item.category}</span>
-                      <div><i style={{ width: `${Math.round((item.count / maxCount) * 100)}%` }} /></div>
+                      <div><i style={{ width: `${Math.round((item.count / guideMaxCount) * 100)}%` }} /></div>
                       <b>{item.count}</b>
                     </div>
                   ))}
@@ -92,6 +92,12 @@ export function AnalysisView({ vm, repo, analysisId }: { vm: AnalysisDetailViewM
                 <article className="vitem" key={detail.id || `${detail.file}-${detail.line}-${detail.type}`}>
                   <div className="vitem-header"><span>{detail.file}{detail.function ? <em> · {String(detail.function)}</em> : null}</span><span>Line {detail.line ?? '-'} <b className={`level-badge level-${detail.severity}`}>{detail.severity}</b></span></div>
                   <div className="metadata">{[detail.cwe ? `CWE: ${detail.cwe}` : '', detail.cvss_score !== undefined ? `CVSS: ${detail.cvss_score}` : '', detail.cvss_vector ? String(detail.cvss_vector) : '', detail.confidence ? `신뢰도: ${detail.confidence}` : ''].filter(Boolean).join(' · ')}</div>
+                  {detail.guide_category || detail.guide_item ? (
+                    <div className="guide-reference">
+                      <span>{detail.guide_source || '공식 보안약점 진단가이드 기준'}</span>
+                      <strong>{[detail.guide_category, detail.guide_item].filter(Boolean).join(' > ')}</strong>
+                    </div>
+                  ) : null}
                   <pre className="vitem-code">{codeLines(detail.code, detail.line).map((line) => <code key={line.number} className={line.active ? 'active' : ''}><span>{line.number}</span>{line.text}</code>)}</pre>
                   <div className="vitem-bottom"><div className="vitem-callpath"><b>호출 경로</b>{detail.call_chain.length ? detail.call_chain.map((node) => <span key={node}>{node}</span>) : <span className="dashboard-muted">호출 경로 정보 없음</span>}</div><div className="vitem-right"><div className="problem"><b>문제점</b><p>{detail.description}</p></div><div className="fix"><b>해결 방법</b><pre>{detail.fix}</pre></div>{detail.safe_example ? <div className="fix"><b>안전한 예시</b><pre>{String(detail.safe_example)}</pre></div> : null}</div></div>
                 </article>
