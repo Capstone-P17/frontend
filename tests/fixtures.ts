@@ -11,7 +11,7 @@ export const analysisResult = {
       score: { overall: 35 },
     },
     vulnerabilities: [
-      { id: 'v1', type: 'SQL_INJECTION', severity: 'HIGH', file: 'src/A.java', line: 10, code_snippet: 'query', description: 'desc', recommendation: 'fix', cvss: { score: 8.1, vector: 'CVSS:3.1' }, call_chain: ['Controller', 'DAO'] },
+      { id: 'v1', type: 'SQL_INJECTION', severity: 'HIGH', file: 'src/A.java', line: 10, code_snippet: 'query', description: 'desc', evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', recommendation: 'fix', cvss: { score: 8.1, vector: 'CVSS:3.1' }, call_chain: ['Controller', 'DAO'] },
       { id: 'v2', type: 'SQL_INJECTION', severity: 'CRITICAL', file: 'src/A.java', line: 10, code_snippet: '', cvss: 9.1 },
       { id: 'v3', type: 'XSS', severity: 'MEDIUM', file: 'src/B.java', line: 20, safe_example: 'escape(input)' },
     ],

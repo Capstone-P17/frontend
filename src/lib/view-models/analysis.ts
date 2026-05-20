@@ -196,6 +196,7 @@ function buildVulnerabilityDetail(vuln: Dict) {
     function: vuln.function,
     code: String(vuln.code_snippet ?? '코드 정보가 없습니다.'),
     description: String(vuln.description ?? '취약점 설명이 없습니다.'),
+    evidence: String(vuln.evidence ?? ''),
     fix: String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.'),
     safe_example: vuln.safe_example,
     confidence: vuln.confidence,
