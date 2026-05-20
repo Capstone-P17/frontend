@@ -200,6 +200,7 @@ function buildVulnerabilityDetail(vuln: Dict) {
     fix: String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.'),
     safe_example: vuln.safe_example,
     confidence: vuln.confidence,
+    confidence_reason: String(vuln.confidence_reason ?? ''),
     call_chain: callChain,
   };
 }
