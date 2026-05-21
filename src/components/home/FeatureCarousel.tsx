@@ -15,7 +15,7 @@ type FeatureSlide = {
 const slides: FeatureSlide[] = [
   {
     title: '취약점 탐지',
-    description: 'Java AST 기반 정적 분석으로 SQL Injection, XSS, 하드코딩된 비밀번호 등을 탐지합니다.',
+    description: 'Java AST 기반 정적 분석으로 지원 범위에 포함된 7개 취약점 유형을 탐지합니다.',
     badge: 'Detection',
     preview: (
       <div className="mock-finding-view">
@@ -30,16 +30,16 @@ const slides: FeatureSlide[] = [
     ),
   },
   {
-    title: '시각화된 결과',
-    description: '취약점이 발견된 파일과 라인, 위험도, 호출 흐름을 대시보드로 제공합니다.',
+    title: '근거 중심 결과',
+    description: '취약점이 발견된 파일과 라인, 공식 가이드 분류, 탐지 근거, 호출 흐름을 함께 제공합니다.',
     badge: 'Dashboard',
     preview: (
       <div className="mock-dashboard-view">
-        <div className="mock-score"><span>Security Score</span><b>72</b><small>/ 100</small></div>
+        <div className="mock-evidence-panel"><span>탐지 근거</span><b>req.getParameter</b><small>→ SQL 실행 API</small></div>
         <div className="mock-bars">
-          <div><span>Critical</span><i style={{ width: '28%' }} /></div>
-          <div><span>High</span><i style={{ width: '62%' }} /></div>
-          <div><span>Medium</span><i style={{ width: '44%' }} /></div>
+          <div><span>입력 흐름</span><i style={{ width: '78%' }} /></div>
+          <div><span>가이드 매핑</span><i style={{ width: '64%' }} /></div>
+          <div><span>신뢰도 기준</span><i style={{ width: '48%' }} /></div>
         </div>
         <div className="mock-callgraph"><span>Controller</span><em /> <span>Service</span><em /> <span>Repository</span></div>
       </div>

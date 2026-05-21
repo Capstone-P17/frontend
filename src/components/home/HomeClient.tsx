@@ -13,11 +13,21 @@ import { buildRecentResultsViewModel, type RecentResultsViewModel } from '@/lib/
 import { buildDashboardHref, buildLegacyRedirectUrl } from '@/lib/routes';
 import type { User } from '@/lib/types';
 
-const capabilityItems = [
-  'JAVA 소스코드 지원',
-  '정적 분석 방식과 호출 그래프 분석을 통한 탐지',
-  'GitHub 저장소 분석 지원',
-  'LLM 기반 분석 리포트 생성 지원',
+const analysisCriteria = [
+  '취약점 유형',
+  '공식 가이드 분류',
+  '탐지 근거',
+  '신뢰도 판단 기준',
+];
+
+const supportedWeaknesses = [
+  'SQL Injection',
+  'XSS',
+  'Hardcoded Secret',
+  'Path Traversal',
+  'Command Injection',
+  'Insecure Random',
+  'Weak Hash',
 ];
 
 export function HomeClient() {
@@ -56,20 +66,40 @@ export function HomeClient() {
     <Shell user={user}>
       <section className="hero">
         <div className="home-container">
-          <Badge className="home-eyebrow" variant="outline">P17 Security Analyzer</Badge>
-          <h1>소스코드 보안 취약점 검사 시작하기</h1>
-          <p className="subtitle">GitHub 저장소 주소를 입력하면 소스코드 보안 취약점 분석을 시작합니다.<br />예: https://github.com/owner/repo</p>
+          <Badge className="home-eyebrow" variant="outline">행정안전부 2019.6 진단가이드 기반</Badge>
+          <h1>소스코드 취약점 분석 서비스</h1>
+          <p className="subtitle">GitHub 저장소 주소를 입력하면 행정안전부 공식 보안약점 진단가이드(2019.6) 기준으로 취약점을 탐지합니다.<br />예: https://github.com/owner/repo</p>
           <RepoSubmitForm isLoggedIn={Boolean(user)} authLoading={authLoading} />
 
           <Card className="capability-box home-shadcn-card">
             <CardContent className="home-card-content">
-              <div className="capability-label">소스코드 보안 취약점 검사는 아래 기능을 수행합니다</div>
+              <div className="home-standard-header">
+                <div>
+                  <div className="capability-label">분석 기준</div>
+                  <h2>점수보다 근거를 먼저 보여줍니다</h2>
+                </div>
+                <Badge className="home-standard-badge" variant="outline">소프트웨어 보안약점 진단가이드</Badge>
+              </div>
+              <p className="capability-description">
+                분석 결과는 행정안전부 소프트웨어 보안약점 진단가이드(2019.6 개정)를 기준으로 분류하고, 각 항목마다 왜 탐지됐는지 확인할 수 있는 근거를 함께 제공합니다.
+              </p>
               <div className="capability-feature-grid">
-                {capabilityItems.map((item, index) => (
+                {analysisCriteria.map((item, index) => (
                   <div key={item} className="capability-feature-card">
                     <span className="capability-feature-index">{String(index + 1).padStart(2, '0')}</span>
                     <span>{item}</span>
                   </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="capability-box home-shadcn-card">
+            <CardContent className="home-card-content">
+              <div className="capability-label">탐지 가능한 취약점 유형</div>
+              <div className="supported-weakness-grid">
+                {supportedWeaknesses.map((weakness) => (
+                  <Badge key={weakness} className="supported-weakness-chip" variant="secondary">{weakness}</Badge>
                 ))}
               </div>
             </CardContent>

@@ -90,16 +90,42 @@ export function AnalysisView({ vm, repo, analysisId }: { vm: AnalysisDetailViewM
               <summary><b>{type}</b><span className={`level-badge level-${items[0].severity}`}>{items[0].severity}</span><span>총 {items.length}건 발견됨</span></summary>
               {items.map((detail) => (
                 <article className="vitem" key={detail.id || `${detail.file}-${detail.line}-${detail.type}`}>
-                  <div className="vitem-header"><span>{detail.file}{detail.function ? <em> · {String(detail.function)}</em> : null}</span><span>Line {detail.line ?? '-'} <b className={`level-badge level-${detail.severity}`}>{detail.severity}</b></span></div>
-                  <div className="metadata">{[detail.cwe ? `CWE: ${detail.cwe}` : '', detail.cvss_score !== undefined ? `CVSS: ${detail.cvss_score}` : '', detail.cvss_vector ? String(detail.cvss_vector) : '', detail.confidence ? `신뢰도: ${detail.confidence}` : ''].filter(Boolean).join(' · ')}</div>
-                  {detail.guide_category || detail.guide_item ? (
-                    <div className="guide-reference">
-                      <span>{detail.guide_source || '공식 보안약점 진단가이드 기준'}</span>
-                      <strong>{[detail.guide_category, detail.guide_item].filter(Boolean).join(' > ')}</strong>
+                  <div className="vitem-summary">
+                    <div className="vitem-header"><span>{detail.file}{detail.function ? <em> · {String(detail.function)}</em> : null}</span><span>Line {detail.line ?? '-'} <b className={`level-badge level-${detail.severity}`}>{detail.severity}</b></span></div>
+                    <div className="metadata">{[detail.cwe ? `CWE: ${detail.cwe}` : '', detail.cvss_score !== undefined ? `CVSS: ${detail.cvss_score}` : '', detail.cvss_vector ? String(detail.cvss_vector) : '', detail.confidence ? `신뢰도: ${detail.confidence}` : ''].filter(Boolean).join(' · ')}</div>
+                    {detail.guide_category || detail.guide_item ? (
+                      <div className="guide-reference">
+                        <span>{detail.guide_source || '공식 보안약점 진단가이드 기준'}</span>
+                        <strong>{[detail.guide_category, detail.guide_item].filter(Boolean).join(' > ')}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="vitem-code-compare">
+                    <div className="code-panel code-panel-vulnerable">
+                      <div className="code-panel-header"><span>취약 코드</span><b>탐지 위치</b></div>
+                      <pre className="vitem-code">{codeLines(detail.code, detail.line).map((line) => <code key={line.number} className={line.active ? 'active' : ''}><span>{line.number}</span>{line.text}</code>)}</pre>
                     </div>
-                  ) : null}
-                  <pre className="vitem-code">{codeLines(detail.code, detail.line).map((line) => <code key={line.number} className={line.active ? 'active' : ''}><span>{line.number}</span>{line.text}</code>)}</pre>
-                  <div className="vitem-bottom"><div className="vitem-callpath"><b>호출 경로</b>{detail.call_chain.length ? detail.call_chain.map((node) => <span key={node}>{node}</span>) : <span className="dashboard-muted">호출 경로 정보 없음</span>}</div><div className="vitem-right">{detail.evidence ? <div className="evidence"><b>탐지 근거</b><p>{detail.evidence}</p></div> : null}{detail.confidence_reason ? <div className="confidence-reason"><b>신뢰도 판단 기준</b><p>{detail.confidence_reason}</p></div> : null}<div className="problem"><b>문제점</b><p>{detail.description}</p></div><div className="fix"><b>해결 방법</b><pre>{detail.fix}</pre></div>{detail.safe_example ? <div className="fix"><b>안전한 예시</b><pre>{String(detail.safe_example)}</pre></div> : null}</div></div>
+                    <div className="code-panel code-panel-safe">
+                      <div className="code-panel-header"><span>권장 수정 예시</span><b>보안 패턴</b></div>
+                      {detail.safe_example ? (
+                        <pre className="vitem-safe-code">{String(detail.safe_example)}</pre>
+                      ) : (
+                        <pre className="vitem-safe-code recommendation-preview">{detail.fix}</pre>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="vitem-evidence-grid">
+                    <div className="vitem-callpath"><b>호출 경로</b>{detail.call_chain.length ? detail.call_chain.map((node) => <span key={node}>{node}</span>) : <span className="dashboard-muted">호출 경로 정보 없음</span>}</div>
+                    {detail.evidence ? <div className="evidence"><b>탐지 근거</b><p>{detail.evidence}</p></div> : null}
+                    {detail.confidence_reason ? <div className="confidence-reason"><b>신뢰도 판단 기준</b><p>{detail.confidence_reason}</p></div> : null}
+                  </div>
+
+                  <div className="vitem-explanation-grid">
+                    <div className="problem"><b>문제점</b><p>{detail.description}</p></div>
+                    <div className="fix"><b>수정 방향</b><pre>{detail.fix}</pre></div>
+                  </div>
                 </article>
               ))}
             </details>
