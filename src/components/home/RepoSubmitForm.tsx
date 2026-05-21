@@ -41,8 +41,8 @@ export function RepoSubmitForm({ isLoggedIn, authLoading = false }: Props) {
 
   return (
     <form className="repo-form" action="/loading" method="get" onSubmit={submit}>
-      <Input className="h-12 border-white/10 bg-white/10 px-4 text-base text-white placeholder:text-white/45 focus-visible:border-cyan-300 focus-visible:ring-cyan-300/25" name="repo" value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" />
-      <Button className="h-12 rounded-lg bg-cyan-400 px-6 text-sm font-bold text-slate-950 hover:bg-cyan-300" type="submit" size="lg" disabled={pending}>{pending ? '분석 준비 중' : '분석 시작'}</Button>
+      <Input className="h-12 border-slate-300 bg-white px-4 text-base text-slate-950 shadow-sm placeholder:text-slate-400 focus-visible:border-teal-700 focus-visible:ring-teal-700/20" name="repo" value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" />
+      <Button className="repo-submit-button" type="submit" size="lg" disabled={pending}>{pending ? '분석 준비 중' : '분석 시작'}</Button>
       <Button className="repo-sample-button" type="button" variant="secondary" disabled={pending} onClick={() => startAnalysis(SAMPLE_REPOSITORY_URL)}>
         P17 backend 샘플 분석해보기
       </Button>

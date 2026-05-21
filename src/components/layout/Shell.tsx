@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { AnalysisSidePanel } from '@/components/layout/AnalysisSidePanel';
 import { AuthMenu } from '@/components/layout/AuthMenu';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { PUBLIC_BACKEND_BASE_URL } from '@/lib/backend-url';
 import type { User } from '@/lib/types';
 import type { RecentResultsViewModel } from '@/lib/view-models/analysis';
@@ -25,6 +26,7 @@ export function Header({ user }: { user?: User | null }) {
       <div className="navbar-inner">
         <Link className="navbar-logo" href="/">P17</Link>
         <div className="navbar-right">
+          <ThemeToggle />
           <AuthMenu user={user} loginUrl={loginUrl} />
         </div>
       </div>
