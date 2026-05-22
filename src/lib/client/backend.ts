@@ -131,6 +131,10 @@ export async function listResultsClient(limit = 5): Promise<Record<string, unkno
   return clientBackendRequest<Record<string, unknown>>('/results', { query: { limit } });
 }
 
+export async function getCapabilitiesClient(): Promise<Record<string, unknown>> {
+  return clientBackendRequest<Record<string, unknown>>('/capabilities');
+}
+
 export async function downloadReportClient(analysisId: string): Promise<void> {
   const trimmedAnalysisId = analysisId.trim();
   if (!trimmedAnalysisId) throw new BackendError(400, 'PDF를 다운로드할 분석 ID가 없습니다.');

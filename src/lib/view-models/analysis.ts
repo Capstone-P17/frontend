@@ -13,6 +13,7 @@ export const TYPE_DISPLAY: Record<string, string> = {
   PATH_TRAVERSAL: 'Path Traversal',
   INSECURE_RANDOM: 'Insecure Randomness',
   WEAK_HASH: 'Weak Cryptographic Hash',
+  DANGEROUS_FILE_UPLOAD: 'Dangerous File Upload',
 };
 
 export type Dict = Record<string, unknown>;

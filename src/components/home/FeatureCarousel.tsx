@@ -15,7 +15,7 @@ type FeatureSlide = {
 const slides: FeatureSlide[] = [
   {
     title: '취약점 탐지',
-    description: 'Java AST 기반 정적 분석으로 지원 범위에 포함된 7개 취약점 유형을 탐지합니다.',
+    description: 'Java AST 기반 정적 분석으로 지원 범위에 포함된 8개 취약점 유형을 탐지합니다.',
     badge: 'Detection',
     preview: (
       <div className="mock-finding-view">
@@ -59,7 +59,7 @@ const slides: FeatureSlide[] = [
   },
 ];
 
-export function FeatureCarousel() {
+export function FeatureCarousel({ detectorCount = 8 }: { detectorCount?: number }) {
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(0);
 
@@ -86,23 +86,29 @@ export function FeatureCarousel() {
     <section className="feature-carousel-section" aria-label="주요 기능">
       <Carousel setApi={setApi} opts={{ align: 'start', loop: true }} className="feature-carousel">
         <CarouselContent>
-          {slides.map((slide) => (
-            <CarouselItem key={slide.title}>
-              <Card className="feature-carousel-card">
-                <CardContent className="feature-carousel-content">
-                  <div className="feature-carousel-copy">
-                    <Badge className="feature-carousel-badge" variant="outline">{slide.badge}</Badge>
-                    <h2>{slide.title}</h2>
-                    <p>{slide.description}</p>
-                  </div>
-                  <div className="feature-preview" aria-hidden="true">
-                    <div className="feature-preview-toolbar"><span /><span /><span /></div>
-                    <div className="feature-preview-body">{slide.preview}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </CarouselItem>
-          ))}
+          {slides.map((slide) => {
+            const description = slide.title === '취약점 탐지'
+              ? `Java AST 기반 정적 분석으로 지원 범위에 포함된 ${detectorCount}개 취약점 유형을 탐지합니다.`
+              : slide.description;
+
+            return (
+              <CarouselItem key={slide.title}>
+                <Card className="feature-carousel-card">
+                  <CardContent className="feature-carousel-content">
+                    <div className="feature-carousel-copy">
+                      <Badge className="feature-carousel-badge" variant="outline">{slide.badge}</Badge>
+                      <h2>{slide.title}</h2>
+                      <p>{description}</p>
+                    </div>
+                    <div className="feature-preview" aria-hidden="true">
+                      <div className="feature-preview-toolbar"><span /><span /><span /></div>
+                      <div className="feature-preview-body">{slide.preview}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CarouselItem>
+            );
+          })}
         </CarouselContent>
       </Carousel>
       <div className="feature-carousel-dots" aria-hidden="true">

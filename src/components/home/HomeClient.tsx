@@ -8,8 +8,13 @@ import { FeatureCarousel } from '@/components/home/FeatureCarousel';
 import { RepoSubmitForm } from '@/components/home/RepoSubmitForm';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { getOptionalCurrentUserClient, listResultsClient } from '@/lib/client/backend';
-import { buildRecentResultsViewModel, type RecentResultsViewModel } from '@/lib/view-models/analysis';
+import { getCapabilitiesClient, getOptionalCurrentUserClient, listResultsClient } from '@/lib/client/backend';
+import {
+  buildCapabilitiesViewModel,
+  buildRecentResultsViewModel,
+  vulnerabilityTypeToDisplayName,
+  type RecentResultsViewModel,
+} from '@/lib/view-models/analysis';
 import { buildDashboardHref, buildLegacyRedirectUrl } from '@/lib/routes';
 import type { User } from '@/lib/types';
 
@@ -20,7 +25,7 @@ const analysisCriteria = [
   '신뢰도 판단 기준',
 ];
 
-const supportedWeaknesses = [
+const fallbackSupportedWeaknesses = [
   'SQL Injection',
   'XSS',
   'Hardcoded Secret',
@@ -28,6 +33,7 @@ const supportedWeaknesses = [
   'Command Injection',
   'Insecure Random',
   'Weak Hash',
+  'Dangerous File Upload',
 ];
 
 export function HomeClient() {
@@ -36,6 +42,7 @@ export function HomeClient() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [recent, setRecent] = useState<RecentResultsViewModel>([]);
+  const [supportedWeaknesses, setSupportedWeaknesses] = useState(fallbackSupportedWeaknesses);
 
   useEffect(() => {
     const legacy = buildLegacyRedirectUrl(searchParams);
@@ -45,7 +52,18 @@ export function HomeClient() {
   useEffect(() => {
     let cancelled = false;
 
+    async function loadCapabilities() {
+      const response = await getCapabilitiesClient().catch(() => ({}));
+      if (cancelled) return;
+      const capabilities = buildCapabilitiesViewModel(response);
+      const detectorNames = capabilities.detectors
+        .map((detector) => vulnerabilityTypeToDisplayName((detector as { type?: unknown }).type))
+        .filter((name) => name && name !== 'Unknown');
+      if (detectorNames.length) setSupportedWeaknesses(detectorNames);
+    }
+
     async function load() {
+      void loadCapabilities();
       const nextUser = await getOptionalCurrentUserClient();
       if (cancelled) return;
       setUser(nextUser);
@@ -96,7 +114,7 @@ export function HomeClient() {
 
           <Card className="capability-box home-shadcn-card">
             <CardContent className="home-card-content">
-              <div className="capability-label">탐지 가능한 취약점 유형</div>
+              <div className="capability-label">탐지 가능한 취약점 유형 ({supportedWeaknesses.length}개)</div>
               <div className="supported-weakness-grid">
                 {supportedWeaknesses.map((weakness) => (
                   <Badge key={weakness} className="supported-weakness-chip" variant="secondary">{weakness}</Badge>
@@ -138,7 +156,7 @@ export function HomeClient() {
             </Card>
           )}
 
-          <FeatureCarousel />
+          <FeatureCarousel detectorCount={supportedWeaknesses.length} />
         </div>
       </section>
     </Shell>
