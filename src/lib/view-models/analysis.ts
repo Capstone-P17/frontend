@@ -18,6 +18,60 @@ export const TYPE_DISPLAY: Record<string, string> = {
 
 export type Dict = Record<string, unknown>;
 
+export type LlmExplanationStatus =
+  | 'unavailable'
+  | 'generated'
+  | 'skipped'
+  | 'failed'
+  | 'skipped_context_budget_exceeded';
+
+export type FindingLlmExplanation = {
+  why_vulnerable: string;
+  how_to_fix: string;
+  fix_steps: string[];
+  cited_guideline_ids?: string[];
+  citations?: unknown[];
+  grounding_notes?: string | null;
+};
+
+export type VulnerabilityFinding = {
+  id: string;
+  type: string;
+  severity: string;
+  file: string;
+  line?: number | null;
+  function?: string | null;
+
+  description: string;
+  recommendation: string;
+  safe_example?: string;
+  confidence_reason?: string;
+
+  llm_explanation_status?: LlmExplanationStatus;
+  llm_explanation?: FindingLlmExplanation | null;
+  llm_explanation_error?: string | null;
+};
+
+export function getFindingDisplayText(finding: VulnerabilityFinding) {
+  const explanation = finding.llm_explanation;
+
+  if (finding.llm_explanation_status === 'generated' && explanation) {
+    return {
+      isDynamic: true,
+      whyVulnerable: explanation.why_vulnerable,
+      howToFix: explanation.how_to_fix,
+      fixSteps: explanation.fix_steps ?? [],
+    };
+  }
+
+  return {
+    isDynamic: false,
+    whyVulnerable: finding.description,
+    howToFix: finding.recommendation,
+    fixSteps: [],
+  };
+}
+
 export function severityToKoreanLabel(severity: unknown): string {
   return SEVERITY_LABELS[String(severity ?? '').toUpperCase()] ?? '보통';
 }
@@ -38,6 +92,31 @@ function asRecord(value: unknown): Dict {
 
 function asArray(value: unknown): Dict[] {
   return Array.isArray(value) ? value.filter((item): item is Dict => Boolean(item && typeof item === 'object' && !Array.isArray(item))) : [];
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
+function toLlmExplanationStatus(value: unknown): LlmExplanationStatus | undefined {
+  const status = String(value ?? '');
+  return ['unavailable', 'generated', 'skipped', 'failed', 'skipped_context_budget_exceeded'].includes(status)
+    ? status as LlmExplanationStatus
+    : undefined;
+}
+
+function toFindingLlmExplanation(value: unknown): FindingLlmExplanation | null {
+  const explanation = asRecord(value);
+  if (!explanation.why_vulnerable || !explanation.how_to_fix) return null;
+
+  return {
+    why_vulnerable: String(explanation.why_vulnerable),
+    how_to_fix: String(explanation.how_to_fix),
+    fix_steps: asStringArray(explanation.fix_steps),
+    cited_guideline_ids: Array.isArray(explanation.cited_guideline_ids) ? explanation.cited_guideline_ids.map(String) : undefined,
+    citations: Array.isArray(explanation.citations) ? explanation.citations : undefined,
+    grounding_notes: explanation.grounding_notes === null || explanation.grounding_notes === undefined ? null : String(explanation.grounding_notes),
+  };
 }
 
 function toInt(value: unknown, fallback = 0): number {
@@ -181,6 +260,7 @@ function buildVulnerabilityDetail(vuln: Dict) {
   const cvss = typeof vuln.cvss === 'number' ? { score: vuln.cvss } : asRecord(vuln.cvss);
   const line = Number(vuln.line);
   const callChain = Array.isArray(vuln.call_chain) ? vuln.call_chain.map(String) : [];
+  const recommendation = String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.');
   return {
     id: String(vuln.id ?? ''),
     type: vulnerabilityTypeToDisplayName(vuln.type ?? 'UNKNOWN'),
@@ -194,15 +274,19 @@ function buildVulnerabilityDetail(vuln: Dict) {
     cvss_vector: cvss.vector,
     file: String(vuln.file ?? 'Unknown'),
     line: Number.isFinite(line) && line > 0 ? Math.trunc(line) : null,
-    function: vuln.function,
+    function: vuln.function ? String(vuln.function) : null,
     code: String(vuln.code_snippet ?? '코드 정보가 없습니다.'),
     description: String(vuln.description ?? '취약점 설명이 없습니다.'),
     evidence: String(vuln.evidence ?? ''),
-    fix: String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.'),
-    safe_example: vuln.safe_example,
+    recommendation,
+    fix: recommendation,
+    safe_example: typeof vuln.safe_example === 'string' ? vuln.safe_example : undefined,
     confidence: vuln.confidence,
     confidence_reason: String(vuln.confidence_reason ?? ''),
     call_chain: callChain,
+    llm_explanation_status: toLlmExplanationStatus(vuln.llm_explanation_status),
+    llm_explanation: toFindingLlmExplanation(vuln.llm_explanation),
+    llm_explanation_error: vuln.llm_explanation_error ? String(vuln.llm_explanation_error) : null,
   };
 }
 

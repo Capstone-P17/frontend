@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { buildDashboardHref } from '@/lib/routes';
+import { getFindingDisplayText } from '@/lib/view-models/analysis';
 import type { AnalysisDetailViewModel } from '@/lib/view-models/analysis';
 
 type VulnerabilityDetail = AnalysisDetailViewModel['vuln_details'][number];
@@ -229,6 +230,7 @@ function GuideReference({ detail }: { detail: VulnerabilityDetail }) {
 
 function CodeComparison({ detail }: { detail: VulnerabilityDetail }) {
   const highlightedLines = codeLines(detail.code, detail.line);
+  const display = getFindingDisplayText(detail);
 
   return (
     <section className="vitem-code-compare" aria-label="취약 코드와 권장 수정 예시">
@@ -253,7 +255,7 @@ function CodeComparison({ detail }: { detail: VulnerabilityDetail }) {
         {detail.safe_example ? (
           <pre className="vitem-safe-code">{String(detail.safe_example)}</pre>
         ) : (
-          <pre className="vitem-safe-code recommendation-preview">{detail.fix}</pre>
+          <pre className="vitem-safe-code recommendation-preview">{display.howToFix}</pre>
         )}
       </div>
     </section>
@@ -290,16 +292,24 @@ function EvidenceGrid({ detail }: { detail: VulnerabilityDetail }) {
 }
 
 function ExplanationGrid({ detail }: { detail: VulnerabilityDetail }) {
+  const display = getFindingDisplayText(detail);
+
   return (
     <section className="vitem-explanation-grid" aria-label="문제점과 수정 방향">
       <div className="problem">
         <b>문제점</b>
-        <p>{detail.description}</p>
+        <p>{display.whyVulnerable}</p>
       </div>
 
       <div className="fix">
         <b>수정 방향</b>
-        <pre>{detail.fix}</pre>
+        <pre>{display.howToFix}</pre>
+        {display.fixSteps.length ? (
+          <ol className="fix-steps">
+            {display.fixSteps.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}
+          </ol>
+        ) : null}
+        {!display.isDynamic ? <p className="dashboard-muted">기본 분석 설명을 표시 중입니다.</p> : null}
       </div>
     </section>
   );
