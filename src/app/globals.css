@@ -94,7 +94,8 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .page-main.with-analysis-p
 .repo-form .form-error { grid-column:1 / -1; margin:0; }
 .repo-submit-button { height:48px!important; border:1px solid rgba(15,118,110,.18)!important; border-radius:8px!important; background:var(--accent)!important; color:#FFFFFF!important; padding:0 24px!important; box-shadow:0 8px 18px rgba(15,118,110,.18); font-size:.875rem!important; font-weight:800!important; }
 .repo-submit-button:hover { background:#0B5F59!important; color:#FFFFFF!important; }
-.repo-sample-button { grid-column:1 / -1; justify-self:center; border:1px solid var(--line)!important; background:#FFFFFF!important; color:var(--text)!important; }
+.repo-sample-list { grid-column:1 / -1; display:grid; gap:8px; justify-self:center; width:min(100%, 320px); }
+.repo-sample-button { width:100%; border:1px solid var(--line)!important; background:#FFFFFF!important; color:var(--text)!important; }
 .repo-sample-button:hover { background:var(--accent-soft)!important; }
 .primary-button, .wide-button { background:var(--accent); color:white; border:0; border-radius:8px; min-height:44px; padding:0 20px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
 .wide-button { width:100%; margin-top:20px; border:1px solid var(--line); background:#FFFFFF; color:var(--text); }
