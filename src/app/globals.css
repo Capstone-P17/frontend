@@ -196,12 +196,10 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .page-main.with-analysis-p
 }
 .hero::before {
   content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
-  background-image:
-    linear-gradient(to right, #000718 0%, transparent 18%, transparent 82%, #000718 100%),
-    url('/background.jpg');
-  background-size: 100% 100%, contain;
-  background-repeat: no-repeat, no-repeat;
-  background-position: center, top center;
+  background-image: url('/background.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: top center;
 }
 .hero > * { position:relative; z-index:1; }
 .home-container { width:min(100% - 48px, 960px); margin:0 auto; }
