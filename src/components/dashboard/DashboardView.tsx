@@ -167,7 +167,7 @@ function FileListCard({ files }: { files: FileSummary[] }) {
           <div className="dashboard-file-row header" role="row">
             <span role="columnheader">파일명</span>
             <span role="columnheader">취약점</span>
-            <span role="columnheader">라인</span>
+            <span role="columnheader">탐지 라인</span>
             <span role="columnheader">위험도</span>
           </div>
 
@@ -187,7 +187,7 @@ function FileRow({ file }: { file: FileSummary }) {
     <div className="dashboard-file-row" role="row">
       <span className="file-name" role="cell">{file.file}</span>
       <span className={vulnCountTone(file.vuln)} role="cell">{file.vuln}</span>
-      <span role="cell">{file.lines.toLocaleString()}</span>
+      <span className="line-summary" role="cell">{file.line_summary}</span>
       <span role="cell">
         <span className={`level-badge level-${file.level}`}>{file.level}</span>
       </span>

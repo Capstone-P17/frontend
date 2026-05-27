@@ -618,9 +618,10 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .footer.with-analysis-pane
 .type-chip-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
 .type-chip { border-color:var(--line)!important; background:#F8FAFC!important; color:var(--text)!important; }
 .dashboard-file-table { overflow:hidden; border:1px solid var(--line); border-radius:16px; }
-.dashboard-file-row { display:grid; grid-template-columns:minmax(0,1.8fr) .55fr .55fr .65fr; gap:14px; align-items:center; padding:14px 16px; border-top:1px solid var(--line); color:var(--text); }
+.dashboard-file-row { display:grid; grid-template-columns:minmax(0,1.7fr) .5fr minmax(96px,.8fr) .65fr; gap:14px; align-items:center; padding:14px 16px; border-top:1px solid var(--line); color:var(--text); }
 .dashboard-file-row.header { border-top:0; background:#F8FAFC; color:var(--muted); font-size:.78rem; font-weight:900; letter-spacing:.04em; text-transform:uppercase; }
 .dashboard-file-row .file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+.dashboard-file-row .line-summary { color:var(--text); font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .stats-grid.four { grid-template-columns:repeat(4,1fr); }
 .stat-label, .muted, .metadata { color:var(--muted); font-size:.85rem; }
 .stat-value { font-size:1.8rem; font-weight:800; } .stat-value.small { font-size:1.1rem; } .stat-value.danger { color:var(--danger); }
@@ -841,6 +842,7 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .footer.with-analysis-pane
    반응형
 ───────────────────────────────── */
 @media (max-width:900px) {
+  .repo-form { grid-template-columns:1fr; }
   .navbar-inner, .home-container { width:min(100% - 32px, 960px); }
 }
 @media (max-width:800px) {
@@ -861,7 +863,7 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .footer.with-analysis-pane
   .dashboard-container { width:min(100% - 32px, 960px); }
   .dashboard-hero-card { flex-direction:column; align-items:flex-start; }
   .dashboard-hero-actions { justify-content:flex-start; }
-  .dashboard-file-row { grid-template-columns:1fr 64px 64px 76px; font-size:.85rem; }
+  .dashboard-file-row { grid-template-columns:1fr 56px 92px 76px; font-size:.85rem; }
   .recent-result-card { grid-template-columns:1fr; }
   .recent-result-meta { align-items:flex-start; }
   .page-main.with-analysis-panel, .footer.with-analysis-panel { margin-left:0; }

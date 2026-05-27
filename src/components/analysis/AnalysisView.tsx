@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { buildDashboardHref } from "@/lib/routes";
-import { getFindingDisplayText } from "@/lib/view-models/analysis";
+import { getFindingDisplayText, severityRank } from "@/lib/view-models/analysis";
 import type { AnalysisDetailViewModel } from "@/lib/view-models/analysis";
 
 type VulnerabilityDetail = AnalysisDetailViewModel["vuln_details"][number];
@@ -36,7 +36,27 @@ function groupByType(details: VulnerabilityDetail[]) {
 	for (const detail of details) {
 		grouped.set(detail.type, [...(grouped.get(detail.type) ?? []), detail]);
 	}
-	return [...grouped.entries()];
+	return [...grouped.entries()]
+		.map(
+			([type, items]) =>
+				[
+					type,
+					[...items].sort(
+						(a, b) =>
+							severityRank(b.raw_severity) - severityRank(a.raw_severity) ||
+							String(a.file).localeCompare(String(b.file)) ||
+							(a.line ?? Number.MAX_SAFE_INTEGER) -
+								(b.line ?? Number.MAX_SAFE_INTEGER),
+					),
+				] as [string, VulnerabilityDetail[]],
+		)
+		.sort(
+			([typeA, itemsA], [typeB, itemsB]) =>
+				severityRank(itemsB[0]?.raw_severity) -
+					severityRank(itemsA[0]?.raw_severity) ||
+				itemsB.length - itemsA.length ||
+				typeA.localeCompare(typeB),
+		);
 }
 
 function metadataText(detail: VulnerabilityDetail): string {
