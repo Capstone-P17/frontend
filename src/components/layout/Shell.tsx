@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { AnalysisSidePanel } from '@/components/layout/AnalysisSidePanel';
 import { AuthMenu } from '@/components/layout/AuthMenu';
@@ -24,7 +25,9 @@ export function Header({ user }: { user?: User | null }) {
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        <Link className="navbar-logo" href="/">P17</Link>
+        <Link className="navbar-logo" href="/" aria-label="홈으로 이동">
+          <Image src="/logo.png" alt="P17 로고" height={54} width={180} style={{ height: 54, width: 'auto' }} priority />
+        </Link>
         <div className="navbar-right">
           <ThemeToggle />
           <AuthMenu user={user} loginUrl={loginUrl} />

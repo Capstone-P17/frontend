@@ -91,7 +91,7 @@ export function AuthMenu({ user, loginUrl }: Props) {
     return (
       <Button className="github-login-button" variant="outline" size="lg" type="button" disabled={loginPending} onClick={login}>
         <GitHubIcon />
-        <span>{loginPending ? 'GitHub 로그인 중입니다.' : 'GitHub 로그인'}</span>
+        <span>{loginPending ? 'GitHub 로그인 중입니다.' : 'GitHub로 로그인'}</span>
       </Button>
     );
   }
