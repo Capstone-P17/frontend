@@ -9,6 +9,55 @@ type Props = {
 	jobId: string;
 };
 
+const benchmarkScopeItems = [
+	{
+		label: "공식 샘플 기준",
+		text: "OWASP BenchmarkJava와 NIST SARD Juliet Java 1.3 일부 샘플로 회귀 테스트를 수행합니다.",
+	},
+	{
+		label: "탐지 확인",
+		text: "SQL Injection, Weak Hash, Insecure Random 일부 패턴은 공식 샘플에서 탐지 가능함을 확인했습니다.",
+	},
+	{
+		label: "한계 관리",
+		text: "분기, 컬렉션, 메서드 간 흐름이 필요한 일부 샘플은 known false negative로 분리해 추적합니다.",
+	},
+];
+
+export function BenchmarkScopeNotice() {
+	const [activeIndex, setActiveIndex] = useState(0);
+	const activeItem = benchmarkScopeItems[activeIndex];
+
+	useEffect(() => {
+		const interval = window.setInterval(() => {
+			setActiveIndex((current) => (current + 1) % benchmarkScopeItems.length);
+		}, 3200);
+
+		return () => window.clearInterval(interval);
+	}, []);
+
+	return (
+		<div className="loading-benchmark-card" aria-label="공식 샘플 기준 탐지 범위">
+			<div className="loading-benchmark-header">
+				<span>공식 샘플 기준 탐지 범위</span>
+				<b>선별 검증</b>
+			</div>
+			<div className="loading-benchmark-slide" aria-live="polite">
+				<strong>{activeItem.label}</strong>
+				<p>{activeItem.text}</p>
+			</div>
+			<div className="loading-benchmark-dots" aria-hidden="true">
+				{benchmarkScopeItems.map((item, index) => (
+					<span
+						key={item.label}
+						className={index === activeIndex ? "active" : ""}
+					/>
+				))}
+			</div>
+		</div>
+	);
+}
+
 export function LoadingClient({ repo, jobId }: Props) {
 	const router = useRouter();
 	const [status, setStatus] = useState<"waiting" | "completed">("waiting");
@@ -88,6 +137,7 @@ export function LoadingClient({ repo, jobId }: Props) {
 					: "GitHub 저장소를 다운로드하고 Java 소스코드의 보안 취약점을 분석하는 중입니다."}
 			</p>
 			<p className="muted">현재 상태: {jobStatus}</p>
+			{status !== "completed" ? <BenchmarkScopeNotice /> : null}
 		</section>
 	);
 }

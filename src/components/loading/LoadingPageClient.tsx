@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
-import { LoadingClient } from '@/components/loading/LoadingClient';
+import { BenchmarkScopeNotice, LoadingClient } from '@/components/loading/LoadingClient';
 import { BackendError } from '@/lib/backend-errors';
 import { createAnalysisJobClient, getCurrentUserClient } from '@/lib/client/backend';
 import type { User } from '@/lib/types';
@@ -61,7 +61,7 @@ export function LoadingPageClient() {
   }
 
   if (creating || !jobId) {
-    return <Shell user={user} active="loading"><section className="load-wrap"><div className="load-ring" /><h1>분석 작업을 준비하는 중입니다.</h1><div className="load-repo">🔗 {repo}</div></section></Shell>;
+    return <Shell user={user} active="loading"><section className="load-wrap"><div className="load-ring" /><h1>분석 작업을 준비하는 중입니다.</h1><div className="load-repo">🔗 {repo}</div><BenchmarkScopeNotice /></section></Shell>;
   }
 
   return <Shell user={user} active="loading"><LoadingClient repo={repo} jobId={jobId} /></Shell>;
