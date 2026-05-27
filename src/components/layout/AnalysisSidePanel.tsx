@@ -1,26 +1,38 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, FileSearch, GitBranch, LayoutDashboard, ListChecks, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, FileSearch, GitBranch, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
 import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { buildAnalysisHref, buildDashboardHref } from '@/lib/routes';
-import type { RecentResultsViewModel } from '@/lib/view-models/analysis';
+import type { SidebarVulnItem } from '@/components/layout/Shell';
 
 type Props = {
   active?: 'dashboard' | 'analysis' | 'home' | 'login' | 'loading';
   repo?: string;
   analysisId?: string | null;
-  recentResults?: RecentResultsViewModel;
+  vulnList?: SidebarVulnItem[];
 };
 
 const STORAGE_KEY = 'p17_analysis_panel_collapsed';
 
-export function AnalysisSidePanel({ active, repo = '', analysisId, recentResults = [] }: Props) {
+const SEVERITY_COLORS: Record<string, string> = {
+  CRITICAL: '#ff5757',
+  HIGH: '#ff8c42',
+  MEDIUM: '#e6b800',
+  LOW: '#48CFCB',
+};
+
+export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = [] }: Props) {
   const [collapsed, setCollapsed] = useState(false);
-  const buildResultHref = active === 'analysis' ? buildAnalysisHref : buildDashboardHref;
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  const logoSrc = mounted && resolvedTheme === 'dark' ? '/logo_dr.png' : '/logo_li.png';
 
   useEffect(() => {
     document.documentElement.dataset.analysisPanel = collapsed ? 'collapsed' : 'expanded';
@@ -35,7 +47,7 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, recentResults
       <div className="analysis-side-header">
         <Link className="analysis-side-brand" href="/" aria-label="홈으로 이동">
           <span className="analysis-side-brand-mark"><ShieldCheck aria-hidden="true" size={18} /></span>
-          <span className="analysis-side-brand-text">P17</span>
+          <Image src={logoSrc} alt="로고" height={28} width={100} style={{ height: 28, width: 'auto' }} />
         </Link>
         <Button
           aria-label={collapsed ? '분석 패널 펼치기' : '분석 패널 접기'}
@@ -73,25 +85,38 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, recentResults
 
         <ReportDownloadButton analysisId={analysisId} className="analysis-side-download" />
 
-        <div className="analysis-side-list-header">
-          <span><ListChecks aria-hidden="true" size={16} /> 분석 목록</span>
-          <Badge className="analysis-side-count" variant="outline">{recentResults.length}</Badge>
-        </div>
-        <div className="analysis-side-list">
-          {recentResults.length ? recentResults.map((item) => {
-            const isActive = item.analysis_id === analysisId;
-            return (
-              <Link
-                className={`analysis-side-list-item ${isActive ? 'active' : ''}`}
-                href={buildResultHref(item.repository, item.analysis_id)}
-                key={item.analysis_id || item.repository}
-              >
-                <span>{item.repository || '저장소 정보 없음'}</span>
-                <b>{item.scan_date} · 취약점 {item.total_vulnerabilities}건</b>
-              </Link>
-            );
-          }) : <p className="analysis-side-empty">표시할 분석 기록이 없습니다.</p>}
-        </div>
+        {/* Vulnerability list */}
+        {vulnList.length > 0 && (
+          <div className="analysis-side-vuln-section">
+            <div className="analysis-side-list-header">
+              <span><AlertTriangle size={14} aria-hidden="true" />취약점 목록</span>
+              <span className="analysis-side-count">{vulnList.length}</span>
+            </div>
+            <ul className="analysis-side-vuln-list">
+              {vulnList.map((v) => (
+                <li key={v.id}>
+                  <Link
+                    className="analysis-side-vuln-item"
+                    href={`${buildAnalysisHref(repo, analysisId)}#vuln-${v.id}`}
+                    title={`${v.type} — ${v.file}`}
+                  >
+                    <span
+                      className="analysis-side-vuln-badge"
+                      style={{ background: SEVERITY_COLORS[v.raw_severity] ?? '#48CFCB' }}
+                      aria-label={v.severity}
+                    >
+                      {v.severity.slice(0, 1)}
+                    </span>
+                    <div className="analysis-side-vuln-info">
+                      <span className="analysis-side-vuln-type">{v.type}</span>
+                      <span className="analysis-side-vuln-file">{v.file.split('/').pop() ?? v.file}</span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <nav className="analysis-side-collapsed" aria-label="접힌 분석 메뉴" aria-hidden={!collapsed}>

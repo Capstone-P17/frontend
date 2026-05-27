@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
@@ -44,20 +45,25 @@ function vulnCountTone(count: number): string {
   return 'normal-text';
 }
 
-function ResultHero({ repo, analysisId }: { repo: string; analysisId?: string | null }) {
+function ResultHero({ repo, analysisId, score }: { repo: string; analysisId?: string | null; score: number }) {
+  const tone = scoreTone(score);
+
   return (
     <header className="dashboard-hero-card">
-      <div>
+      <div className="dashboard-hero-text">
         <Badge className="dashboard-eyebrow" variant="outline">Analysis Complete</Badge>
         <h1>보안 취약점 분석 결과</h1>
         <p>{repo || '분석 대상 저장소'}에 대한 정적 분석 결과를 요약했습니다.</p>
+        <div className="dashboard-hero-actions" aria-label="대시보드 작업">
+          <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildAnalysisHref(repo, analysisId)} />}>
+            상세 분석 보기
+          </Button>
+          <ReportDownloadButton analysisId={analysisId} className="dashboard-secondary-action" />
+        </div>
       </div>
 
-      <div className="dashboard-hero-actions" aria-label="대시보드 작업">
-        <Button className="dashboard-primary-action" nativeButton={false} render={<Link href={buildAnalysisHref(repo, analysisId)} />}>
-          상세 분석 보기
-        </Button>
-        <ReportDownloadButton analysisId={analysisId} className="dashboard-secondary-action" />
+      <div className="dashboard-hero-bean">
+        <Image src={`/bean_${tone}.png`} alt={`보안 상태: ${scoreLabel(score)}`} width={180} height={180} className="dashboard-hero-bean-img" priority />
       </div>
     </header>
   );
@@ -65,41 +71,15 @@ function ResultHero({ repo, analysisId }: { repo: string; analysisId?: string | 
 
 function KpiGrid({ items }: { items: KpiItem[] }) {
   return (
-    <div className="dashboard-kpi-grid" aria-label="분석 요약 지표">
+    <Card className="dashboard-card dashboard-kpi-bar" aria-label="분석 요약 지표">
       {items.map((item) => (
-        <Card className="dashboard-card" key={item.label}>
-          <CardContent className="dashboard-kpi">
-            <span>{item.label}</span>
-            <strong className={`${item.compact ? 'small-value' : ''} ${item.tone === 'danger' ? 'danger-text' : ''}`.trim()}>
-              {item.value}
-            </strong>
-          </CardContent>
-        </Card>
+        <div className="dashboard-kpi" key={item.label}>
+          <span>{item.label}</span>
+          <strong className={`${item.compact ? 'small-value' : ''} ${item.tone === 'danger' ? 'danger-text' : ''}`.trim()}>
+            {item.value}
+          </strong>
+        </div>
       ))}
-    </div>
-  );
-}
-
-function ScoreCard({ score }: { score: number }) {
-  const tone = scoreTone(score);
-
-  return (
-    <Card className="dashboard-card dashboard-score-card">
-      <CardContent className="dashboard-card-content">
-        <div className="dashboard-card-header">
-          <span>보안 점수</span>
-          <Badge className={`score-badge ${tone}`} variant="outline">{scoreLabel(score)}</Badge>
-        </div>
-
-        <div className={`score-meter ${tone}`} style={{ '--score': `${score}%` } as CSSProperties}>
-          <div>
-            <strong>{score}</strong>
-            <span>/100</span>
-          </div>
-        </div>
-
-        <p className="dashboard-muted">점수가 낮을수록 우선 조치가 필요한 취약점이 많습니다.</p>
-      </CardContent>
     </Card>
   );
 }
@@ -202,7 +182,7 @@ export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel
 
   return (
     <section className="dashboard-container">
-      <ResultHero repo={repo} analysisId={currentAnalysisId} />
+      <ResultHero repo={repo} analysisId={currentAnalysisId} score={vm.security_score} />
 
       <KpiGrid
         items={[
@@ -214,11 +194,7 @@ export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel
       />
 
       <div className="dashboard-summary-stack">
-        <section className="dashboard-main-grid" aria-label="분석 결과 요약">
-          <ScoreCard score={vm.security_score} />
-          <SeverityCard total={totalSeverity} vm={vm} />
-        </section>
-
+        <SeverityCard total={totalSeverity} vm={vm} />
         <FileListCard files={vm.file_list} />
       </div>
     </section>

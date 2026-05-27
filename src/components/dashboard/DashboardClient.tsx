@@ -4,9 +4,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { DashboardView } from '@/components/dashboard/DashboardView';
-import { getAnalysisResultClient, getCurrentUserClient, listResultsClient } from '@/lib/client/backend';
+import { getAnalysisResultClient, getCurrentUserClient } from '@/lib/client/backend';
 import { BackendError } from '@/lib/backend-errors';
-import { buildDashboardViewModel, buildRecentResultsViewModel, type DashboardViewModel, type RecentResultsViewModel } from '@/lib/view-models/analysis';
+import { buildDashboardViewModel, type DashboardViewModel } from '@/lib/view-models/analysis';
 import type { User } from '@/lib/types';
 
 function loginReturnTo(repo: string, analysisId: string | null): string {
@@ -21,7 +21,6 @@ export function DashboardClient() {
   const [user, setUser] = useState<User | null>(null);
   const [vm, setVm] = useState<DashboardViewModel | null>(null);
   const [repo, setRepo] = useState(requestedRepo);
-  const [recent, setRecent] = useState<RecentResultsViewModel>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -33,15 +32,11 @@ export function DashboardClient() {
         const nextUser = await getCurrentUserClient();
         if (cancelled) return;
         setUser(nextUser);
-        const [result, recentResults] = await Promise.all([
-          getAnalysisResultClient(analysisId),
-          listResultsClient(8).catch(() => ({})),
-        ]);
+        const result = await getAnalysisResultClient(analysisId);
         if (cancelled) return;
         const nextVm = buildDashboardViewModel(result);
         setVm(nextVm);
         setRepo(nextVm.repo_url || requestedRepo);
-        setRecent(buildRecentResultsViewModel(recentResults));
       } catch (err) {
         if (err instanceof BackendError && err.kind === 'unauthenticated') {
           router.replace(`/login?return_to=${encodeURIComponent(loginReturnTo(requestedRepo, analysisId))}`);
@@ -64,5 +59,5 @@ export function DashboardClient() {
   }
 
   const currentAnalysisId = vm.analysis_id || analysisId;
-  return <Shell user={user} active="dashboard" repo={repo} analysisId={currentAnalysisId} recentResults={recent} showAnalysisPanel><DashboardView vm={vm} repo={repo} analysisId={currentAnalysisId} /></Shell>;
+  return <Shell user={user} active="dashboard" repo={repo} analysisId={currentAnalysisId} showAnalysisPanel><DashboardView vm={vm} repo={repo} analysisId={currentAnalysisId} /></Shell>;
 }
