@@ -12,8 +12,8 @@
   --surface-strong:#E8EEF4;
   --surface-soft:rgba(15,23,42,.045);
   --line:rgba(15,23,42,.12);
-  --accent:#00ADB5;
-  --accent-soft:#E0F7F8;
+  --accent:#007A82;
+  --accent-soft:#d0f0f2;
   --text:#17202A;
   --muted:#637083;
   --danger:#B4232B;
@@ -63,13 +63,8 @@ a { color:inherit; }
   color:#17202A;
   transition:background .35s ease, border-color .35s ease, color .35s ease;
 }
-/* 히어로 위 (기본) */
-.navbar.navbar-hero {
-  background:#000718;
-  border-bottom:1px solid transparent;
-  color:#e8f4f8;
-}
-/* 히어로 아래로 스크롤 */
+/* 히어로 위 — 라이트모드는 항상 기본색 유지 */
+.navbar.navbar-hero,
 .navbar.navbar-hero.navbar-scrolled {
   background:#F5F8FB;
   border-bottom-color:rgba(15,23,42,.10);
@@ -111,17 +106,6 @@ a { color:inherit; }
   color:var(--accent)!important;
 }
 .theme-toggle svg { width:18px!important; height:18px!important; }
-/* 히어로 위 (navbar-hero + 미scrolled) */
-.navbar.navbar-hero:not(.navbar-scrolled) .theme-toggle {
-  background:rgba(238,238,238,.08)!important;
-  color:#e8f4f8!important;
-  border-color:rgba(238,238,238,.18)!important;
-  box-shadow:none!important;
-}
-.navbar.navbar-hero:not(.navbar-scrolled) .theme-toggle:hover {
-  background:rgba(0,173,181,.16)!important;
-  color:#DDFBFD!important;
-}
 
 /* ── GitHub 로그인 버튼 ── */
 .github-login-button {
@@ -191,31 +175,38 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .page-main.with-analysis-p
   margin-top:-90px;
   padding:calc(90px + 72px) 0 120px;
   text-align:center;
-  background-color:#000718;
+  background-color:#f5f5f5;
   overflow:hidden;
 }
-.hero::before {
-  content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
-  background-image:
-    linear-gradient(to right, #010b14 0%, transparent 20%, transparent 80%, #010b14 100%),
-    url('/background.jpg');
-  background-size: 100% 100%, contain;
-  background-repeat: no-repeat, no-repeat;
-  background-position: center, top center;
-}
-.hero > * { position:relative; z-index:1; }
+.hero > * { position:relative; }
 .home-container { width:min(100% - 48px, 960px); margin:0 auto; }
 .hero h1 {
   font-size:5.5rem; font-weight:900; line-height:1.1;
   letter-spacing:-.04em; text-align:center; margin:0 0 20px;
-  background:linear-gradient(135deg, #48CFCB 0%, #00ADB5 45%, #0077B6 100%);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
+}
+.hero-doyou {
+  background:linear-gradient(135deg, #48CFCB 0%, #7ed957 100%) !important;
+  -webkit-background-clip:text !important;
+  -webkit-text-fill-color:transparent !important;
+  background-clip:text !important;
+}
+.hero-secure {
+  color:#424242 !important;
+  -webkit-text-fill-color:#424242 !important;
+  background:none !important;
+}
+.dark .hero-secure {
+  color:#f5f5f5 !important;
+  -webkit-text-fill-color:#f5f5f5 !important;
+}
+.hero-q {
+  color:#ff5757 !important;
+  -webkit-text-fill-color:#ff5757 !important;
+  background:none !important;
 }
 .hero .subtitle {
-  color:rgba(255,255,255,.80); font-size:1.05rem;
-  line-height:1.8; text-shadow:0 1px 6px rgba(0,0,0,.45);
+  color:var(--muted); font-size:1.05rem;
+  line-height:1.8;
   margin:0 auto 8px; max-width:680px;
 }
 
@@ -231,23 +222,27 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .page-main.with-analysis-p
   width:100%; height:56px;
   padding-left:20px; padding-right:150px;
   border-radius:14px;
-  border:1.5px solid rgba(72,207,203,0.45);
-  background:rgba(255,255,255,0.08);
+  border:1.5px solid var(--line);
+  background:#ffffff;
   color:var(--text);
   font-size:1rem;
-  backdrop-filter:blur(8px);
   outline:none;
   transition:border-color .2s, box-shadow .2s;
 }
-.repo-input::placeholder { color:rgba(150,170,190,0.8); }
+.repo-input::placeholder { color:var(--muted); }
 .repo-input:focus {
-  border-color:rgba(72,207,203,0.8);
-  box-shadow:0 0 0 3px rgba(72,207,203,0.18);
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(0,122,130,0.15);
 }
 .dark .repo-input {
-  background:rgba(255,255,255,0.06);
-  border-color:rgba(72,207,203,0.35);
+  background:rgba(255,255,255,0.07);
+  border-color:rgba(180,200,210,0.2);
   color:#e8f4f8;
+}
+.dark .repo-input::placeholder { color:rgba(150,170,190,0.6); }
+.dark .repo-input:focus {
+  border-color:rgba(180,200,210,0.45);
+  box-shadow:0 0 0 3px rgba(180,200,210,0.08);
 }
 .repo-submit-button {
   position:absolute!important; right:6px!important;
@@ -476,18 +471,17 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .page-main.with-analysis-p
   display:flex; align-items:center; justify-content:center;
   padding:20px; text-align:center;
   font-size:1.05rem; font-weight:900;
-  color:rgb(72,207,203); line-height:1.5;
+  color:var(--muted); line-height:1.5;
   word-break:keep-all; cursor:default;
-  box-shadow:0 0 14px rgba(0,173,181,.15);
   transition:transform .22s ease, box-shadow .22s ease;
 }
-.dark .vuln-card { background:#12161F; box-shadow:0 0 18px rgba(0,173,181,.35); }
+.dark .vuln-card { background:#12161F; color:#EEEEEE; }
 /* 짝수 인덱스 (0,2,4,6) */
 .vuln-card-even { border-radius:60px 0 60px 0; }
-.vuln-card-even:hover { transform:translateY(-5px); box-shadow:0 0 32px rgba(0,173,181,.55); }
+.vuln-card-even:hover { transform:translateY(-5px); }
 /* 홀수 인덱스 (1,3,5,7) */
 .vuln-card-odd { border-radius:0 60px 0 60px; margin-top:50px; }
-.vuln-card-odd:hover { transform:translateY(45px); box-shadow:0 0 32px rgba(0,173,181,.55); }
+.vuln-card-odd:hover { transform:translateY(45px); }
 
 /* ─────────────────────────────────
    [4] 푸터
@@ -766,7 +760,7 @@ body:has(.analysis-side-panel[data-collapsed="true"]) .footer.with-analysis-pane
 .dark .profile-avatar-fallback { color:#071113; }
 .dark .profile-menu { background:#2C333D!important; box-shadow:0 18px 50px rgba(0,0,0,.35); }
 .dark .profile-menu-logout:hover { background:rgba(255,69,69,.12); }
-.dark .hero { background:linear-gradient(180deg, var(--bg) 50%, var(--accent) 100%); }
+.dark .hero { background-color:#000718; }
 .dark .home-eyebrow,
 .dark .home-standard-badge,
 .dark .feature-carousel-badge { border-color:rgba(0,173,181,.35)!important; background:rgba(0,173,181,.12)!important; color:#DDFBFD!important; }

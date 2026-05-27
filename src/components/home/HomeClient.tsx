@@ -42,7 +42,9 @@ export function HomeClient() {
       {/* ── [2] 히어로 ── */}
       <section className="hero">
         <div className="home-container">
-          <h1>DoYouSECURE?</h1>
+          <h1>
+            <span className="hero-doyou">DoYou</span><span className="hero-secure">SECURE</span><span className="hero-q">?</span>
+          </h1>
           <p className="subtitle">
             GitHub 저장소 주소를 입력하면 행정안전부 공식 보안약점 진단가이드(2019.6) 기준으로
             소스코드 보안 취약점을 탐지합니다.
