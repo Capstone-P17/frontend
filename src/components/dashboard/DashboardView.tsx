@@ -104,7 +104,7 @@ function ScoreCard({ score }: { score: number }) {
   );
 }
 
-function SeverityCard({ vm, danger, warning, normal, total }: { vm: DashboardViewModel; danger: number; warning: number; normal: number; total: number }) {
+function SeverityCard({ vm, total }: { vm: DashboardViewModel; total: number }) {
   return (
     <Card className="dashboard-card">
       <CardContent className="dashboard-card-content">
@@ -114,9 +114,10 @@ function SeverityCard({ vm, danger, warning, normal, total }: { vm: DashboardVie
         </div>
 
         <div className="severity-stack" aria-label="심각도별 취약점 수">
-          <SeverityRow count={danger} label="위험" tone="danger" total={total} />
-          <SeverityRow count={warning} label="경고" tone="warning" total={total} />
-          <SeverityRow count={normal} label="보통" tone="normal" total={total} />
+          <SeverityRow count={vm.severity_counts.critical} label="치명적" tone="danger" total={total} />
+          <SeverityRow count={vm.severity_counts.high} label="위험" tone="danger" total={total} />
+          <SeverityRow count={vm.severity_counts.medium} label="경고" tone="warning" total={total} />
+          <SeverityRow count={vm.severity_counts.low} label="보통" tone="normal" total={total} />
         </div>
 
         <VulnerabilityTypeChips types={vm.vulnerability_types.slice(0, 5)} />
@@ -196,9 +197,6 @@ function FileRow({ file }: { file: FileSummary }) {
 
 export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel; repo: string; analysisId?: string | null }) {
   const severity = vm.severity_counts;
-  const danger = severity.critical + severity.high;
-  const warning = severity.medium;
-  const normal = severity.low;
   const totalSeverity = severityTotal(severity);
   const currentAnalysisId = vm.analysis_id || analysisId;
 
@@ -218,7 +216,7 @@ export function DashboardView({ vm, repo, analysisId }: { vm: DashboardViewModel
       <div className="dashboard-summary-stack">
         <section className="dashboard-main-grid" aria-label="분석 결과 요약">
           <ScoreCard score={vm.security_score} />
-          <SeverityCard danger={danger} normal={normal} total={totalSeverity} vm={vm} warning={warning} />
+          <SeverityCard total={totalSeverity} vm={vm} />
         </section>
 
         <FileListCard files={vm.file_list} />

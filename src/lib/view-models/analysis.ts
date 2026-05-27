@@ -86,6 +86,19 @@ export function vulnerabilityTypeToDisplayName(vulnType: unknown): string {
   return TYPE_DISPLAY[raw] ?? raw.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function compareFindingOrder(a: Dict, b: Dict): number {
+  const severityDiff = severityRank(b.severity) - severityRank(a.severity);
+  if (severityDiff !== 0) return severityDiff;
+
+  const fileDiff = String(a.file ?? '').localeCompare(String(b.file ?? ''));
+  if (fileDiff !== 0) return fileDiff;
+
+  const lineDiff = toInt(a.line, Number.MAX_SAFE_INTEGER) - toInt(b.line, Number.MAX_SAFE_INTEGER);
+  if (lineDiff !== 0) return lineDiff;
+
+  return String(a.type ?? '').localeCompare(String(b.type ?? ''));
+}
+
 function asRecord(value: unknown): Dict {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Dict) : {};
 }
@@ -152,6 +165,7 @@ export type RecentResultsViewModel = ReturnType<typeof buildRecentResultsViewMod
 export function buildDashboardViewModel(response: Dict) {
   const { analysisId, analysis } = splitResponse(response);
   const vulnerabilities = asArray(analysis.vulnerabilities);
+  const sortedVulnerabilities = [...vulnerabilities].sort(compareFindingOrder);
   const summary = asRecord(analysis.summary);
   const bySeverity = asRecord(summary.by_severity);
   const byType = asRecord(summary.by_type);
@@ -159,7 +173,7 @@ export function buildDashboardViewModel(response: Dict) {
   const score = asRecord(summary.score);
   const fileSummary = new Map<string, { count: number; severity: string; lines: Set<unknown> }>();
 
-  for (const vuln of vulnerabilities) {
+  for (const vuln of sortedVulnerabilities) {
     const file = String(vuln.file ?? '');
     if (!file) continue;
     const entry = fileSummary.get(file) ?? { count: 0, severity: 'LOW', lines: new Set<unknown>() };
@@ -191,12 +205,20 @@ export function buildDashboardViewModel(response: Dict) {
     guide_categories: Object.entries(byGuideCategory)
       .map(([category, count]) => ({ category, count: toInt(count) }))
       .filter((item) => item.count > 0),
-    file_list: [...fileSummary.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([file, info]) => ({
-      file,
-      vuln: info.count,
-      lines: info.lines.size,
-      level: severityToKoreanLabel(info.severity),
-    })),
+    file_list: [...fileSummary.entries()]
+      .sort(([fileA, infoA], [fileB, infoB]) => {
+        const severityDiff = severityRank(infoB.severity) - severityRank(infoA.severity);
+        if (severityDiff !== 0) return severityDiff;
+        const countDiff = infoB.count - infoA.count;
+        if (countDiff !== 0) return countDiff;
+        return fileA.localeCompare(fileB);
+      })
+      .map(([file, info]) => ({
+        file,
+        vuln: info.count,
+        lines: info.lines.size,
+        level: severityToKoreanLabel(info.severity),
+      })),
   };
 }
 
@@ -293,6 +315,7 @@ function buildVulnerabilityDetail(vuln: Dict) {
 export function buildAnalysisDetailViewModel(response: Dict) {
   const { analysisId, analysis } = splitResponse(response);
   const vulnerabilities = asArray(analysis.vulnerabilities);
+  const sortedVulnerabilities = [...vulnerabilities].sort(compareFindingOrder);
   const summary = asRecord(analysis.summary);
   const byType = asRecord(summary.by_type);
   const byGuideCategory = asRecord(summary.by_guide_category);
@@ -308,7 +331,7 @@ export function buildAnalysisDetailViewModel(response: Dict) {
     call_graph: buildCallGraphView(analysis.call_graph),
     guide_distribution: Object.entries(byGuideCategory).map(([category, count]) => ({ category, count: toInt(count) })).filter((item) => item.count > 0),
     vuln_distribution: Object.entries(byType).map(([category, count]) => ({ category: vulnerabilityTypeToDisplayName(category), count: toInt(count) })).filter((item) => item.count > 0),
-    vuln_details: vulnerabilities.map(buildVulnerabilityDetail),
+    vuln_details: sortedVulnerabilities.map(buildVulnerabilityDetail),
     llm_report: {
       text: llmReport,
       status: llmStatus,

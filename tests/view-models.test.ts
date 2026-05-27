@@ -16,7 +16,7 @@ describe('analysis view model parity', () => {
       { type: 'SQL_INJECTION', name: 'SQL Injection', count: 2 },
       { type: 'XSS', name: 'Cross-Site Scripting (XSS)', count: 1 },
     ]);
-    expect(vm.file_list).toContainEqual({ file: 'src/A.java', vuln: 2, lines: 1, level: '치명적' });
+    expect(vm.file_list[0]).toEqual({ file: 'src/A.java', vuln: 2, lines: 1, level: '치명적' });
   });
 
   it('maps vulnerability detail fields with legacy contract parity', () => {
@@ -25,8 +25,8 @@ describe('analysis view model parity', () => {
     expect(vm.llm_report).toMatchObject({ status: 'generated', available: true, model: 'test-model' });
     expect(vm.llm_report.text).toContain('LLM 리포트입니다.');
     expect(vm.vuln_distribution).toContainEqual({ category: 'SQL Injection', count: 2 });
-    expect(vm.vuln_details[0]).toMatchObject({ severity: '위험', cvss_score: 8.1, cvss_vector: 'CVSS:3.1', evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', confidence_reason: '외부 입력이 SQL 실행 API까지 도달합니다.', call_chain: ['Controller', 'DAO'] });
-    expect(vm.vuln_details[1]).toMatchObject({ severity: '치명적', cvss_score: 9.1, description: '취약점 설명이 없습니다.', evidence: '', confidence_reason: '', fix: '취약점에 적합한 보안 패턴을 적용하세요.' });
+    expect(vm.vuln_details[0]).toMatchObject({ severity: '치명적', cvss_score: 9.1, description: '취약점 설명이 없습니다.', evidence: '', confidence_reason: '', fix: '취약점에 적합한 보안 패턴을 적용하세요.' });
+    expect(vm.vuln_details[1]).toMatchObject({ severity: '위험', cvss_score: 8.1, cvss_vector: 'CVSS:3.1', evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', confidence_reason: '외부 입력이 SQL 실행 API까지 도달합니다.', call_chain: ['Controller', 'DAO'] });
   });
 
   it('supports legacy flat result objects', () => {
