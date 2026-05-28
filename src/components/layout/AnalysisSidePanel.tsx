@@ -7,7 +7,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Button } from '@/components/ui/button';
-import { buildAnalysisHref, buildDashboardHref } from '@/lib/routes';
+import { buildAnalysisHref, buildDashboardHref, buildFindingHref } from '@/lib/routes';
 import type { SidebarVulnItem } from '@/components/layout/Shell';
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
   repo?: string;
   analysisId?: string | null;
   vulnList?: SidebarVulnItem[];
+  selectedFindingId?: string | null;
 };
 
 const STORAGE_KEY = 'p17_analysis_panel_collapsed';
@@ -34,7 +35,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   LOW: '#48CFCB',
 };
 
-export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = [] }: Props) {
+export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = [], selectedFindingId }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
@@ -100,27 +101,33 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = []
               <span className="analysis-side-count">{vulnList.length}</span>
             </div>
             <ul className="analysis-side-vuln-list">
-              {vulnList.map((v) => (
-                <li key={v.id}>
-                  <Link
-                    className="analysis-side-vuln-item"
-                    href={`${buildAnalysisHref(repo, analysisId)}#vuln-${v.id}`}
-                    title={`${v.type} — ${v.file}`}
-                  >
-                    <span
-                      className="analysis-side-vuln-badge"
-                      style={{ background: SEVERITY_COLORS[v.raw_severity] ?? '#48CFCB' }}
-                      aria-label={v.severity}
+              {vulnList.map((v) => {
+                const activeFinding = selectedFindingId === v.id;
+                const location = [v.file.split('/').pop() ?? v.file, v.line ? `:${v.line}` : ''].join('');
+                return (
+                  <li key={v.id}>
+                    <Link
+                      className={`analysis-side-vuln-item ${activeFinding ? 'active' : ''}`}
+                      href={buildFindingHref(repo, analysisId, v.id)}
+                      title={`${v.title} — ${v.file}${v.line ? `:${v.line}` : ''}`}
+                      aria-current={activeFinding ? 'page' : undefined}
                     >
-                      {v.severity.slice(0, 1)}
-                    </span>
-                    <div className="analysis-side-vuln-info">
-                      <span className="analysis-side-vuln-type">{v.type}</span>
-                      <span className="analysis-side-vuln-file">{v.file.split('/').pop() ?? v.file}</span>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+                      <span
+                        className="analysis-side-vuln-badge"
+                        style={{ background: SEVERITY_COLORS[v.raw_severity] ?? '#48CFCB' }}
+                        aria-label={v.severity}
+                      >
+                        {v.severity.slice(0, 1)}
+                      </span>
+                      <div className="analysis-side-vuln-info">
+                        <span className="analysis-side-vuln-type">{v.title}</span>
+                        <span className="analysis-side-vuln-file">{location}</span>
+                        {v.summary ? <span className="analysis-side-vuln-file">{v.summary}</span> : null}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

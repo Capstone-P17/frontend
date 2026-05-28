@@ -32,7 +32,7 @@ export function buildLegacyRedirectUrl(params: SearchLike, origin = 'http://loca
   const targetPath = canonicalPathForLegacyPage(readParam(params, 'page'));
   if (!targetPath) return null;
   const url = new URL(targetPath, origin);
-  for (const key of ['repo', 'analysis_id', 'auth_error', 'error', 'return_to']) {
+  for (const key of ['repo', 'analysis_id', 'finding', 'auth_error', 'error', 'return_to']) {
     appendIfPresent(url, params, key);
   }
   return `${url.pathname}${url.search}`;
@@ -50,6 +50,15 @@ export function buildAnalysisHref(repo: string, analysisId?: string | null): str
   const params = new URLSearchParams();
   if (repo) params.set('repo', repo);
   if (analysisId) params.set('analysis_id', analysisId);
+  const query = params.toString();
+  return `/analysis${query ? `?${query}` : ''}`;
+}
+
+export function buildFindingHref(repo: string, analysisId: string | null | undefined, findingId: string | null | undefined): string {
+  const params = new URLSearchParams();
+  if (repo) params.set('repo', repo);
+  if (analysisId) params.set('analysis_id', analysisId);
+  if (findingId) params.set('finding', findingId);
   const query = params.toString();
   return `/analysis${query ? `?${query}` : ''}`;
 }

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildDashboardHref, buildLegacyRedirectUrl, ROUTE_HANDLER_ALLOWLIST, safeReturnTo } from '@/lib/routes';
+import { buildAnalysisHref, buildDashboardHref, buildFindingHref, buildLegacyRedirectUrl, ROUTE_HANDLER_ALLOWLIST, safeReturnTo } from '@/lib/routes';
 
 describe('route helpers', () => {
   it('redirects legacy pages to canonical routes and preserves query parameters', () => {
     expect(buildLegacyRedirectUrl(new URLSearchParams('page=login'))).toBe('/login');
     expect(buildLegacyRedirectUrl(new URLSearchParams('page=loading&repo=x'))).toBe('/loading?repo=x');
     expect(buildLegacyRedirectUrl(new URLSearchParams('page=dashboard&repo=x&analysis_id=y'))).toBe('/dashboard?repo=x&analysis_id=y');
-    expect(buildLegacyRedirectUrl(new URLSearchParams('page=analysis&repo=x&analysis_id=y'))).toBe('/analysis?repo=x&analysis_id=y');
+    expect(buildLegacyRedirectUrl(new URLSearchParams('page=analysis&repo=x&analysis_id=y&finding=f1'))).toBe('/analysis?repo=x&analysis_id=y&finding=f1');
   });
 
   it('preserves auth_error and error in legacy login redirects', () => {
@@ -22,5 +22,11 @@ describe('route helpers', () => {
   it('keeps route handler allowlist empty for static deployment', () => {
     expect(ROUTE_HANDLER_ALLOWLIST).toEqual([]);
     expect(buildDashboardHref('repo', 'id')).toBe('/dashboard?repo=repo&analysis_id=id');
+    expect(buildAnalysisHref('repo', 'id')).toBe('/analysis?repo=repo&analysis_id=id');
+  });
+
+  it('builds finding detail hrefs with encoded query parameters', () => {
+    expect(buildFindingHref('owner/repo', 'analysis id', 'finding#1')).toBe('/analysis?repo=owner%2Frepo&analysis_id=analysis+id&finding=finding%231');
+    expect(buildFindingHref('', null, '')).toBe('/analysis');
   });
 });

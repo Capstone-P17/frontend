@@ -13,10 +13,14 @@ import type { User } from '@/lib/types';
 
 export type SidebarVulnItem = {
   id: string;
+  title: string;
   type: string;
   severity: string;
   raw_severity: string;
   file: string;
+  line: number | null;
+  summary: string;
+  report_status?: string;
 };
 
 type ShellProps = {
@@ -26,6 +30,7 @@ type ShellProps = {
   repo?: string;
   analysisId?: string | null;
   vulnList?: SidebarVulnItem[];
+  selectedFindingId?: string | null;
   showAnalysisPanel?: boolean;
 };
 
@@ -77,11 +82,11 @@ export function Footer({ withAnalysisPanel = false }: { withAnalysisPanel?: bool
   );
 }
 
-export function Shell({ user, children, active = 'home', repo, analysisId, vulnList, showAnalysisPanel = false }: ShellProps) {
+export function Shell({ user, children, active = 'home', repo, analysisId, vulnList, selectedFindingId, showAnalysisPanel = false }: ShellProps) {
   return (
     <>
       <Header user={user} />
-      {showAnalysisPanel ? <AnalysisSidePanel active={active} repo={repo} analysisId={analysisId} vulnList={vulnList} /> : null}
+      {showAnalysisPanel ? <AnalysisSidePanel active={active} repo={repo} analysisId={analysisId} vulnList={vulnList} selectedFindingId={selectedFindingId} /> : null}
       <main className={showAnalysisPanel ? 'page-main with-analysis-panel' : 'page-main'}>{children}</main>
       <Footer withAnalysisPanel={showAnalysisPanel} />
     </>

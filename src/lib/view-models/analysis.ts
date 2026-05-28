@@ -34,6 +34,14 @@ export type LlmExplanationStatus =
   | 'generated'
   | 'skipped'
   | 'failed'
+  | 'static_fallback'
+  | 'skipped_context_budget_exceeded';
+
+export type FindingReportStatus =
+  | 'unavailable'
+  | 'generated'
+  | 'static_fallback'
+  | 'failed'
   | 'skipped_context_budget_exceeded';
 
 export type FindingLlmExplanation = {
@@ -195,9 +203,22 @@ function asStringArray(value: unknown): string[] {
 
 function toLlmExplanationStatus(value: unknown): LlmExplanationStatus | undefined {
   const status = String(value ?? '');
-  return ['unavailable', 'generated', 'skipped', 'failed', 'skipped_context_budget_exceeded'].includes(status)
+  return ['unavailable', 'generated', 'skipped', 'failed', 'static_fallback', 'skipped_context_budget_exceeded'].includes(status)
     ? status as LlmExplanationStatus
     : undefined;
+}
+
+function toFindingReportStatus(value: unknown): FindingReportStatus {
+  const status = String(value ?? '');
+  return ['unavailable', 'generated', 'static_fallback', 'failed', 'skipped_context_budget_exceeded'].includes(status)
+    ? status as FindingReportStatus
+    : 'unavailable';
+}
+
+function compactText(value: unknown, fallback = '', maxLength = 140): string {
+  const text = String(value ?? fallback).replace(/\s+/g, ' ').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 function toFindingLlmExplanation(value: unknown): FindingLlmExplanation | null {
@@ -374,11 +395,25 @@ function buildVulnerabilityDetail(vuln: Dict) {
   const rawSeverity = normalizeSeverity(vuln.severity);
   const cvss = typeof vuln.cvss === 'number' ? { score: vuln.cvss } : asRecord(vuln.cvss);
   const line = Number(vuln.line);
+  const normalizedLine = Number.isFinite(line) && line > 0 ? Math.trunc(line) : null;
   const callChain = Array.isArray(vuln.call_chain) ? vuln.call_chain.map(String) : [];
   const recommendation = String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.');
+  const displayType = vulnerabilityTypeToDisplayName(vuln.type ?? 'UNKNOWN');
+  const report = asRecord(vuln.finding_report);
+  const reportTitle = compactText(report.title);
+  const reportSummary = compactText(report.summary);
+  const description = String(vuln.description ?? '취약점 설명이 없습니다.');
+  const title = reportTitle || displayType;
+  const summary = reportSummary || compactText(description || recommendation, '', 140);
+  const reportStatus = toFindingReportStatus(report.status ?? vuln.finding_report_status);
+
   return {
     id: String(vuln.id ?? ''),
-    type: vulnerabilityTypeToDisplayName(vuln.type ?? 'UNKNOWN'),
+    title,
+    summary,
+    report_status: reportStatus,
+    markdown_preview: compactText(report.markdown_preview ?? report.markdown, '', 220),
+    type: displayType,
     severity: severityToKoreanLabel(rawSeverity),
     raw_severity: rawSeverity,
     cwe: vuln.cwe,
@@ -388,10 +423,10 @@ function buildVulnerabilityDetail(vuln: Dict) {
     cvss_score: cvss.score,
     cvss_vector: cvss.vector,
     file: String(vuln.file ?? 'Unknown'),
-    line: Number.isFinite(line) && line > 0 ? Math.trunc(line) : null,
+    line: normalizedLine,
     function: vuln.function ? String(vuln.function) : null,
     code: String(vuln.code_snippet ?? '코드 정보가 없습니다.'),
-    description: String(vuln.description ?? '취약점 설명이 없습니다.'),
+    description,
     evidence: String(vuln.evidence ?? ''),
     recommendation,
     fix: recommendation,

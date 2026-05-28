@@ -96,6 +96,43 @@ describe('analysis view model parity', () => {
     expect(vm.vuln_details.map((item) => item.severity)).toEqual(['위험', '보통']);
   });
 
+
+  it('maps compact finding report fields for finding-first sidebar data', () => {
+    const vm = buildAnalysisDetailViewModel({
+      analysis_id: 'analysis-report',
+      analysis_result: {
+        summary: { total_vulnerabilities: 2 },
+        vulnerabilities: [
+          {
+            id: 'fallback-title',
+            type: 'SQL_INJECTION',
+            severity: 'HIGH',
+            file: 'src/A.java',
+            line: 10,
+            description: 'A '.repeat(100),
+          },
+          {
+            id: 'report-title',
+            type: 'XSS',
+            severity: 'MEDIUM',
+            file: 'src/B.java',
+            line: 20,
+            finding_report: {
+              status: 'static_fallback',
+              title: 'Stored finding report title',
+              summary: 'Stored report summary',
+              markdown_preview: '# Summary preview',
+            },
+          },
+        ],
+      },
+    });
+
+    expect(vm.vuln_details[0]).toMatchObject({ id: 'fallback-title', title: 'SQL Injection', report_status: 'unavailable' });
+    expect(vm.vuln_details[0].summary.length).toBeLessThanOrEqual(140);
+    expect(vm.vuln_details[1]).toMatchObject({ id: 'report-title', title: 'Stored finding report title', summary: 'Stored report summary', report_status: 'static_fallback', markdown_preview: '# Summary preview' });
+  });
+
   it('supports legacy flat result objects', () => {
     const vm = buildDashboardViewModel(flatAnalysisResult);
     expect(vm.repo_url).toBe('https://github.com/flat/repo');

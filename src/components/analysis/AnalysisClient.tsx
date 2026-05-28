@@ -18,6 +18,7 @@ export function AnalysisClient() {
   const searchParams = useSearchParams();
   const requestedRepo = searchParams.get('repo') ?? '';
   const analysisId = searchParams.get('analysis_id');
+  const selectedFindingId = searchParams.get('finding');
   const [user, setUser] = useState<User | null>(null);
   const [vm, setVm] = useState<AnalysisDetailViewModel | null>(null);
   const [repo, setRepo] = useState(requestedRepo);
@@ -59,12 +60,18 @@ export function AnalysisClient() {
   }
 
   const currentAnalysisId = vm.analysis_id || analysisId;
+  const firstFindingId = vm.vuln_details[0]?.id ?? null;
+  const activeFindingId = vm.vuln_details.some((v) => v.id === selectedFindingId) ? selectedFindingId : firstFindingId;
   const vulnList: SidebarVulnItem[] = vm.vuln_details.map((v) => ({
     id: v.id,
+    title: v.title,
     type: v.type,
     severity: v.severity,
     raw_severity: v.raw_severity,
     file: v.file,
+    line: v.line,
+    summary: v.summary,
+    report_status: v.report_status,
   }));
-  return <Shell user={user} active="analysis" repo={repo} analysisId={currentAnalysisId} vulnList={vulnList} showAnalysisPanel><AnalysisView vm={vm} repo={repo} analysisId={currentAnalysisId} /></Shell>;
+  return <Shell user={user} active="analysis" repo={repo} analysisId={currentAnalysisId} vulnList={vulnList} selectedFindingId={activeFindingId} showAnalysisPanel><AnalysisView vm={vm} repo={repo} analysisId={currentAnalysisId} /></Shell>;
 }
