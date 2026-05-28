@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { AnalysisListNav } from '@/components/layout/AnalysisListNav';
 import { AnalysisSidePanel } from '@/components/layout/AnalysisSidePanel';
 import { AuthMenu } from '@/components/layout/AuthMenu';
@@ -29,11 +29,18 @@ type ShellProps = {
   showAnalysisPanel?: boolean;
 };
 
+const subscribeMounted = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
+
+function useMounted() {
+  return useSyncExternalStore(subscribeMounted, getMountedSnapshot, getServerMountedSnapshot);
+}
+
 export function Header({ user }: { user?: User | null }) {
   const loginUrl = `${PUBLIC_BACKEND_BASE_URL}/auth/github`;
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const logoSrc = mounted && resolvedTheme === 'dark' ? '/logo_dr.png' : '/logo_li.png';
 
@@ -55,8 +62,7 @@ export function Header({ user }: { user?: User | null }) {
 
 export function Footer({ withAnalysisPanel = false }: { withAnalysisPanel?: boolean }) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   const logoSrc = mounted && resolvedTheme === 'dark' ? '/logo_dr.png' : '/logo_li.png';
 
   return (

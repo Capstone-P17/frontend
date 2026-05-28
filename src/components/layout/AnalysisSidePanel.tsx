@@ -3,7 +3,7 @@
 import { AlertTriangle, ChevronLeft, ChevronRight, FileSearch, GitBranch, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,14 @@ type Props = {
 
 const STORAGE_KEY = 'p17_analysis_panel_collapsed';
 
+const subscribeMounted = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
+
+function useMounted() {
+  return useSyncExternalStore(subscribeMounted, getMountedSnapshot, getServerMountedSnapshot);
+}
+
 const SEVERITY_COLORS: Record<string, string> = {
   CRITICAL: '#ff5757',
   HIGH: '#ff8c42',
@@ -29,9 +37,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = [] }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
 
-  useEffect(() => setMounted(true), []);
   const logoSrc = mounted && resolvedTheme === 'dark' ? '/logo_dr.png' : '/logo_li.png';
 
   useEffect(() => {
