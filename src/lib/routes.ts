@@ -20,7 +20,7 @@ export function canonicalPathForLegacyPage(page: string | undefined): string | n
     case 'loading':
       return '/loading';
     case 'dashboard':
-      return '/dashboard';
+      return '/analysis';
     case 'analysis':
       return '/analysis';
     default:
@@ -39,11 +39,7 @@ export function buildLegacyRedirectUrl(params: SearchLike, origin = 'http://loca
 }
 
 export function buildDashboardHref(repo: string, analysisId?: string | null): string {
-  const params = new URLSearchParams();
-  if (repo) params.set('repo', repo);
-  if (analysisId) params.set('analysis_id', analysisId);
-  const query = params.toString();
-  return `/dashboard${query ? `?${query}` : ''}`;
+  return buildAnalysisHref(repo, analysisId);
 }
 
 export function buildAnalysisHref(repo: string, analysisId?: string | null): string {

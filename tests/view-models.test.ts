@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analysisResult, flatAnalysisResult } from './fixtures';
-import { buildAnalysisDetailViewModel, buildCapabilitiesViewModel, buildDashboardViewModel, buildRecentResultsViewModel, severityRank, vulnerabilityTypeToDisplayName } from '@/lib/view-models/analysis';
+import { buildAnalysisDetailViewModel, buildCapabilitiesViewModel, buildDashboardViewModel, buildFindingDetailViewModel, buildRecentResultsViewModel, severityRank, vulnerabilityTypeToDisplayName } from '@/lib/view-models/analysis';
 
 describe('analysis view model parity', () => {
   it('matches dashboard summary transformation from legacy contract', () => {
@@ -121,7 +121,7 @@ describe('analysis view model parity', () => {
               status: 'static_fallback',
               title: 'Stored finding report title',
               summary: 'Stored report summary',
-              markdown_preview: '# Summary preview',
+              markdown_preview: '# 요약 preview',
             },
           },
         ],
@@ -130,7 +130,7 @@ describe('analysis view model parity', () => {
 
     expect(vm.vuln_details[0]).toMatchObject({ id: 'fallback-title', title: 'SQL Injection', report_status: 'unavailable' });
     expect(vm.vuln_details[0].summary.length).toBeLessThanOrEqual(140);
-    expect(vm.vuln_details[1]).toMatchObject({ id: 'report-title', title: 'Stored finding report title', summary: 'Stored report summary', report_status: 'static_fallback', markdown_preview: '# Summary preview' });
+    expect(vm.vuln_details[1]).toMatchObject({ id: 'report-title', title: 'Stored finding report title', summary: 'Stored report summary', report_status: 'static_fallback', markdown_preview: '# 요약 preview' });
   });
 
   it('supports legacy flat result objects', () => {
@@ -143,4 +143,65 @@ describe('analysis view model parity', () => {
     expect(buildCapabilitiesViewModel({}).supported_languages).toEqual(['java']);
     expect(buildRecentResultsViewModel({ results: [{ analysis_id: 'a', repository: 'r' }] })[0]).toMatchObject({ analysis_id: 'a', repository: 'r', language: 'java' });
   });
+});
+
+it('maps canonical finding detail responses with full markdown separately from compact previews', () => {
+  const detail = buildFindingDetailViewModel({
+    analysis_id: 'analysis-detail',
+    repository: 'owner/repo',
+    finding: {
+      id: 'v1',
+      type: 'SQL_INJECTION',
+      severity: 'HIGH',
+      file: 'src/Login.java',
+      line: 42,
+      description: 'SQL 문자열 결합',
+      recommendation: 'PreparedStatement 사용',
+      source_link: 'https://github.com/acme/repo/blob/main/src/Login.java#L40-L44',
+      call_chain_details: [
+        {
+          label: 'LoginService.authenticate',
+          kind: 'function',
+          file: 'src/Login.java',
+          line: 40,
+          function: 'authenticate',
+          source_link: 'https://github.com/acme/repo/blob/main/src/Login.java#L40',
+        },
+        {
+          label: 'stmt.executeQuery',
+          kind: 'sink',
+          file: 'src/Login.java',
+          line: 42,
+          function: 'authenticate',
+          source_link: 'https://github.com/acme/repo/blob/main/src/Login.java#L42',
+        },
+      ],
+      finding_report: {
+        status: 'generated',
+        title: 'Unauthenticated custom payment management endpoints',
+        summary: 'Full markdown summary',
+        markdown: '# 요약\nfull report\n\n# 수정 예시\n```diff\n+ safe\n```',
+        metadata: { source: 'llm', model: 'test-model', generated_at: '2026-05-28T00:00:00Z' },
+      },
+    },
+  });
+
+  expect(detail.finding).toMatchObject({
+    id: 'v1',
+    title: 'Unauthenticated custom payment management endpoints',
+    report_status: 'generated',
+    report_model: 'test-model',
+    report_source: 'llm',
+    source_link: 'https://github.com/acme/repo/blob/main/src/Login.java#L40-L44',
+  });
+  expect(detail.finding.call_chain_details[1]).toMatchObject({
+    label: 'stmt.executeQuery',
+    kind: 'sink',
+    file: 'src/Login.java',
+    line: 42,
+    function: 'authenticate',
+    source_link: 'https://github.com/acme/repo/blob/main/src/Login.java#L42',
+  });
+  expect(detail.finding.report_markdown).toContain('# 수정 예시');
+  expect(detail.finding.markdown_preview.length).toBeLessThanOrEqual(220);
 });

@@ -11,6 +11,8 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { PUBLIC_BACKEND_BASE_URL } from '@/lib/backend-url';
 import type { User } from '@/lib/types';
 
+const BRAND_NAME = 'DoUSECURE';
+
 export type SidebarVulnItem = {
   id: string;
   title: string;
@@ -53,7 +55,7 @@ export function Header({ user }: { user?: User | null }) {
     <header className="navbar">
       <div className="navbar-inner">
         <Link className="navbar-logo" href="/" aria-label="홈으로 이동">
-          <Image src={logoSrc} alt="로고" height={54} width={180} style={{ height: 54, width: 'auto' }} priority />
+          <Image src={logoSrc} alt={`${BRAND_NAME} 로고`} height={54} width={180} style={{ height: 54, width: 'auto' }} priority />
         </Link>
         <div className="navbar-right">
           <AnalysisListNav user={user} />
@@ -73,9 +75,9 @@ export function Footer({ withAnalysisPanel = false }: { withAnalysisPanel?: bool
   return (
     <footer className={withAnalysisPanel ? 'footer with-analysis-panel' : 'footer'}>
       <div className="footer-inner">
-        <Image src={logoSrc} alt="로고" height={32} width={120} style={{ height: 32, width: 'auto' }} />
+        <Image src={logoSrc} alt={`${BRAND_NAME} 로고`} height={32} width={120} style={{ height: 32, width: 'auto' }} />
         <a className="footer-link" href="https://github.com/Capstone-P17" target="_blank" rel="noreferrer">
-          github.com/Capstone-P17
+          DoUSECURE GitHub
         </a>
       </div>
     </footer>

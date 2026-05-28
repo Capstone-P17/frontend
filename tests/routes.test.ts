@@ -5,7 +5,7 @@ describe('route helpers', () => {
   it('redirects legacy pages to canonical routes and preserves query parameters', () => {
     expect(buildLegacyRedirectUrl(new URLSearchParams('page=login'))).toBe('/login');
     expect(buildLegacyRedirectUrl(new URLSearchParams('page=loading&repo=x'))).toBe('/loading?repo=x');
-    expect(buildLegacyRedirectUrl(new URLSearchParams('page=dashboard&repo=x&analysis_id=y'))).toBe('/dashboard?repo=x&analysis_id=y');
+    expect(buildLegacyRedirectUrl(new URLSearchParams('page=dashboard&repo=x&analysis_id=y'))).toBe('/analysis?repo=x&analysis_id=y');
     expect(buildLegacyRedirectUrl(new URLSearchParams('page=analysis&repo=x&analysis_id=y&finding=f1'))).toBe('/analysis?repo=x&analysis_id=y&finding=f1');
   });
 
@@ -21,7 +21,7 @@ describe('route helpers', () => {
 
   it('keeps route handler allowlist empty for static deployment', () => {
     expect(ROUTE_HANDLER_ALLOWLIST).toEqual([]);
-    expect(buildDashboardHref('repo', 'id')).toBe('/dashboard?repo=repo&analysis_id=id');
+    expect(buildDashboardHref('repo', 'id')).toBe('/analysis?repo=repo&analysis_id=id');
     expect(buildAnalysisHref('repo', 'id')).toBe('/analysis?repo=repo&analysis_id=id');
   });
 

@@ -1,165 +1,175 @@
-import type { ReactNode } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { isValidElement } from 'react';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 
-type Block =
-  | { type: 'heading'; level: 2 | 3 | 4; text: string }
-  | { type: 'paragraph'; text: string }
-  | { type: 'unordered-list'; items: string[] }
-  | { type: 'ordered-list'; items: string[] }
-  | { type: 'blockquote'; text: string }
-  | { type: 'code'; language: string; code: string }
-  | { type: 'rule' };
-
-function isBlockStart(line: string): boolean {
-  return /^(#{1,4})\s+/.test(line)
-    || /^```/.test(line)
-    || /^[-*]\s+/.test(line)
-    || /^\d+\.\s+/.test(line)
-    || /^>\s?/.test(line)
-    || /^-{3,}\s*$/.test(line);
-}
-
-function parseMarkdown(markdown: string): Block[] {
-  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
-  const blocks: Block[] = [];
-  let index = 0;
-
-  while (index < lines.length) {
-    const line = lines[index];
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      index += 1;
-      continue;
-    }
-
-    const fence = trimmed.match(/^```\s*([^`]*)$/);
-    if (fence) {
-      const code: string[] = [];
-      index += 1;
-      while (index < lines.length && !/^```\s*$/.test(lines[index].trim())) {
-        code.push(lines[index]);
-        index += 1;
-      }
-      if (index < lines.length) index += 1;
-      blocks.push({ type: 'code', language: fence[1]?.trim() ?? '', code: code.join('\n') });
-      continue;
-    }
-
-    const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
-    if (heading) {
-      blocks.push({ type: 'heading', level: Math.min(4, Math.max(2, heading[1].length + 1)) as 2 | 3 | 4, text: heading[2].trim() });
-      index += 1;
-      continue;
-    }
-
-    if (/^-{3,}\s*$/.test(trimmed)) {
-      blocks.push({ type: 'rule' });
-      index += 1;
-      continue;
-    }
-
-    if (/^[-*]\s+/.test(trimmed)) {
-      const items: string[] = [];
-      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^[-*]\s+/, ''));
-        index += 1;
-      }
-      blocks.push({ type: 'unordered-list', items });
-      continue;
-    }
-
-    if (/^\d+\.\s+/.test(trimmed)) {
-      const items: string[] = [];
-      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^\d+\.\s+/, ''));
-        index += 1;
-      }
-      blocks.push({ type: 'ordered-list', items });
-      continue;
-    }
-
-    if (/^>\s?/.test(trimmed)) {
-      const quote: string[] = [];
-      while (index < lines.length && /^>\s?/.test(lines[index].trim())) {
-        quote.push(lines[index].trim().replace(/^>\s?/, ''));
-        index += 1;
-      }
-      blocks.push({ type: 'blockquote', text: quote.join(' ') });
-      continue;
-    }
-
-    const paragraph: string[] = [];
-    while (index < lines.length && lines[index].trim() && !isBlockStart(lines[index].trim())) {
-      paragraph.push(lines[index].trim());
-      index += 1;
-    }
-    blocks.push({ type: 'paragraph', text: paragraph.join(' ') });
-  }
-
-  return blocks;
-}
-
-function safeHref(href: string): string | null {
-  if (/^(https?:|mailto:)/i.test(href)) return href;
+function safeHref(href: string | undefined): string | null {
+  if (!href) return null;
+  const trimmed = href.trim();
+  if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('#') || trimmed.startsWith('/')) return trimmed;
   return null;
 }
 
-function renderInline(text: string, keyPrefix: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
-  let cursor = 0;
-  let match: RegExpExecArray | null;
+type CodeBlockLine = {
+  key: string;
+  lineNumber: string;
+  oldLineNumber: string;
+  newLineNumber: string;
+  marker: string;
+  content: string;
+  state: 'plain' | 'active' | 'add' | 'del' | 'hunk' | 'meta';
+};
 
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
-    const token = match[0];
-    const key = `${keyPrefix}-${match.index}`;
+function languageFromClassName(className: unknown): string {
+  const value = typeof className === 'string' ? className : '';
+  return value.match(/language-([a-zA-Z0-9_-]+)/)?.[1] ?? 'text';
+}
 
-    if (token.startsWith('`')) {
-      nodes.push(<code key={key}>{token.slice(1, -1)}</code>);
-    } else if (token.startsWith('**')) {
-      nodes.push(<strong key={key}>{token.slice(2, -2)}</strong>);
-    } else {
-      const link = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-      const href = link ? safeHref(link[2].trim()) : null;
-      nodes.push(href ? <a key={key} href={href} target="_blank" rel="noreferrer">{link?.[1]}</a> : token);
+function normalizeCode(code: unknown): string {
+  return String(code ?? '').replace(/\n$/, '');
+}
+
+function stripSnippetPrefix(line: string): string {
+  const match = line.match(/^\s*>?\s*\d+\s*\|\s?(.*)$/);
+  return match ? match[1] : line;
+}
+
+function toCodeBlockLines(code: string, language: string): CodeBlockLine[] {
+  const rawLines = code.length ? code.split('\n') : [''];
+  const isDiff = language === 'diff' || rawLines.some((line) => /^(?:\+|-|@@)/.test(line));
+  const parsedLines: CodeBlockLine[] = [];
+  let oldLineNumber: number | null = null;
+  let newLineNumber: number | null = null;
+
+  rawLines.forEach((rawLine, index) => {
+    const snippetMatch = rawLine.match(/^(\s*>?)\s*(\d+)\s\|\s?(.*)$/);
+    if (snippetMatch) {
+      const active = snippetMatch[1].includes('>');
+      parsedLines.push({
+        key: `${index}-${rawLine}`,
+        lineNumber: snippetMatch[2],
+        oldLineNumber: '',
+        newLineNumber: '',
+        marker: active ? '●' : '',
+        content: snippetMatch[3],
+        state: active ? 'active' : 'plain',
+      });
+      return;
     }
 
-    cursor = match.index + token.length;
-  }
+    if (isDiff) {
+      const hunkMatch = rawLine.match(/^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
+      if (rawLine.startsWith('@@')) {
+        if (hunkMatch) {
+          oldLineNumber = Number(hunkMatch[1]);
+          newLineNumber = Number(hunkMatch[2]);
+        }
+        parsedLines.push({ key: `${index}-${rawLine}`, lineNumber: '', oldLineNumber: '', newLineNumber: '', marker: '', content: rawLine, state: 'hunk' });
+        return;
+      }
+      if (rawLine.startsWith('+++') || rawLine.startsWith('---')) {
+        parsedLines.push({ key: `${index}-${rawLine}`, lineNumber: '', oldLineNumber: '', newLineNumber: '', marker: rawLine.slice(0, 3), content: rawLine.slice(3).trimStart(), state: 'meta' });
+        return;
+      }
+      if (rawLine.startsWith('+')) {
+        const currentNew = newLineNumber === null ? '' : String(newLineNumber);
+        if (newLineNumber !== null) newLineNumber += 1;
+        parsedLines.push({ key: `${index}-${rawLine}`, lineNumber: '', oldLineNumber: '', newLineNumber: currentNew, marker: '+', content: rawLine.slice(1), state: 'add' });
+        return;
+      }
+      if (rawLine.startsWith('-')) {
+        const currentOld = oldLineNumber === null ? '' : String(oldLineNumber);
+        if (oldLineNumber !== null) oldLineNumber += 1;
+        parsedLines.push({ key: `${index}-${rawLine}`, lineNumber: '', oldLineNumber: currentOld, newLineNumber: '', marker: '-', content: rawLine.slice(1), state: 'del' });
+        return;
+      }
+      if (oldLineNumber !== null && newLineNumber !== null) {
+        const currentOld = String(oldLineNumber);
+        const currentNew = String(newLineNumber);
+        oldLineNumber += 1;
+        newLineNumber += 1;
+        parsedLines.push({ key: `${index}-${rawLine}`, lineNumber: '', oldLineNumber: currentOld, newLineNumber: currentNew, marker: '', content: rawLine.replace(/^ /, ''), state: 'plain' });
+        return;
+      }
+    }
 
-  if (cursor < text.length) nodes.push(text.slice(cursor));
-  return nodes;
+    parsedLines.push({
+      key: `${index}-${rawLine}`,
+      lineNumber: String(index + 1),
+      oldLineNumber: '',
+      newLineNumber: '',
+      marker: '',
+      content: rawLine,
+      state: 'plain',
+    });
+  });
+  return parsedLines;
+}
+
+export function CodeBlock({ code, language = 'text', title }: { code: string; language?: string; title?: string }) {
+  const normalizedLanguage = language.toLowerCase();
+  const lines = toCodeBlockLines(code, normalizedLanguage);
+  const isDiff = normalizedLanguage === 'diff' || lines.some((line) => ['add', 'del', 'hunk', 'meta'].includes(line.state));
+
+  return (
+    <figure className={`code-viewer ${isDiff ? 'diff-viewer' : 'snippet-viewer'}`}>
+      <figcaption className="code-viewer-header">
+        <span>{title ?? (isDiff ? '변경 예시' : '코드 스니펫')}</span>
+        <b>{normalizedLanguage}</b>
+      </figcaption>
+      <pre className="code-viewer-pre">
+        <code>
+          {lines.map((line) => (
+            <span className={`code-viewer-line ${line.state}`} key={line.key}>
+              {isDiff ? (
+                <>
+                  <span className="code-viewer-gutter old">{line.oldLineNumber}</span>
+                  <span className="code-viewer-gutter new">{line.newLineNumber}</span>
+                </>
+              ) : (
+                <span className="code-viewer-gutter">{line.lineNumber}</span>
+              )}
+              <span className="code-viewer-marker">{line.marker}</span>
+              <span className="code-viewer-text">{stripSnippetPrefix(line.content) || ' '}</span>
+            </span>
+          ))}
+        </code>
+      </pre>
+    </figure>
+  );
 }
 
 export function MarkdownContent({ content }: { content: string }) {
-  const blocks = parseMarkdown(content);
-
   return (
     <div className="markdown-content">
-      {blocks.map((block, index) => {
-        const key = `md-${index}`;
-        switch (block.type) {
-          case 'heading': {
-            const Heading = `h${block.level}` as 'h2' | 'h3' | 'h4';
-            return <Heading key={key}>{renderInline(block.text, key)}</Heading>;
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSanitize]}
+        skipHtml
+        components={{
+        a: ({ href, children, ...props }) => {
+          const safe = safeHref(href);
+          if (!safe) return <span>{children}</span>;
+          return (
+            <a href={safe} target={safe.startsWith('http') ? '_blank' : undefined} rel={safe.startsWith('http') ? 'noreferrer' : undefined} {...props}>
+              {children}
+            </a>
+          );
+        },
+        pre: ({ children }) => {
+          if (isValidElement<{ className?: string; children?: unknown }>(children)) {
+            const language = languageFromClassName(children.props.className);
+            return <CodeBlock code={normalizeCode(children.props.children)} language={language} />;
           }
-          case 'paragraph':
-            return <p key={key}>{renderInline(block.text, key)}</p>;
-          case 'unordered-list':
-            return <ul key={key}>{block.items.map((item, itemIndex) => <li key={`${key}-${itemIndex}`}>{renderInline(item, `${key}-${itemIndex}`)}</li>)}</ul>;
-          case 'ordered-list':
-            return <ol key={key}>{block.items.map((item, itemIndex) => <li key={`${key}-${itemIndex}`}>{renderInline(item, `${key}-${itemIndex}`)}</li>)}</ol>;
-          case 'blockquote':
-            return <blockquote key={key}>{renderInline(block.text, key)}</blockquote>;
-          case 'code':
-            return <pre key={key}><code data-language={block.language || undefined}>{block.code}</code></pre>;
-          case 'rule':
-            return <hr key={key} />;
-          default:
-            return null;
-        }
-      })}
+          return <CodeBlock code={normalizeCode(children)} />;
+        },
+        code: ({ className, children, ...props }) => <code className={className} {...props}>{children}</code>,
+        table: ({ children, ...props }) => <div className="markdown-table-scroll"><table {...props}>{children}</table></div>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }

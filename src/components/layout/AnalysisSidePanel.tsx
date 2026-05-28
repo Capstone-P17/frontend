@@ -1,13 +1,13 @@
 'use client';
 
-import { AlertTriangle, ChevronLeft, ChevronRight, FileSearch, GitBranch, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, GitBranch, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Button } from '@/components/ui/button';
-import { buildAnalysisHref, buildDashboardHref, buildFindingHref } from '@/lib/routes';
+import { buildAnalysisHref, buildFindingHref } from '@/lib/routes';
 import type { SidebarVulnItem } from '@/components/layout/Shell';
 
 type Props = {
@@ -35,7 +35,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   LOW: '#48CFCB',
 };
 
-export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = [], selectedFindingId }: Props) {
+export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], selectedFindingId }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
@@ -55,7 +55,7 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = []
       <div className="analysis-side-header">
         <Link className="analysis-side-brand" href="/" aria-label="홈으로 이동">
           <span className="analysis-side-brand-mark"><ShieldCheck aria-hidden="true" size={18} /></span>
-          <Image src={logoSrc} alt="로고" height={28} width={100} style={{ height: 28, width: 'auto' }} />
+          <Image src={logoSrc} alt="DoUSECURE 로고" height={28} width={100} style={{ height: 28, width: 'auto' }} />
         </Link>
         <Button
           aria-label={collapsed ? '분석 패널 펼치기' : '분석 패널 접기'}
@@ -80,14 +80,10 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = []
           </div>
         ) : null}
 
-        <nav className="analysis-side-nav" aria-label="결과 페이지 이동">
-          <Link className={`analysis-side-nav-item ${active === 'dashboard' ? 'active' : ''}`} href={buildDashboardHref(repo, analysisId)}>
+        <nav className="analysis-side-nav" aria-label="분석 결과 이동">
+          <Link className={`analysis-side-nav-item ${!selectedFindingId ? 'active' : ''}`} href={buildAnalysisHref(repo, analysisId)}>
             <LayoutDashboard aria-hidden="true" size={18} />
-            <span>대시보드</span>
-          </Link>
-          <Link className={`analysis-side-nav-item ${active === 'analysis' ? 'active' : ''}`} href={buildAnalysisHref(repo, analysisId)}>
-            <FileSearch aria-hidden="true" size={18} />
-            <span>상세 분석</span>
+            <span>분석 개요</span>
           </Link>
         </nav>
 
@@ -134,11 +130,8 @@ export function AnalysisSidePanel({ active, repo = '', analysisId, vulnList = []
       </div>
 
       <nav className="analysis-side-collapsed" aria-label="접힌 분석 메뉴" aria-hidden={!collapsed}>
-        <Link className={`analysis-side-icon-link ${active === 'dashboard' ? 'active' : ''}`} href={buildDashboardHref(repo, analysisId)} title="대시보드">
+        <Link className={`analysis-side-icon-link ${!selectedFindingId ? 'active' : ''}`} href={buildAnalysisHref(repo, analysisId)} title="분석 개요">
           <LayoutDashboard aria-hidden="true" size={19} />
-        </Link>
-        <Link className={`analysis-side-icon-link ${active === 'analysis' ? 'active' : ''}`} href={buildAnalysisHref(repo, analysisId)} title="상세 분석">
-          <FileSearch aria-hidden="true" size={19} />
         </Link>
       </nav>
     </aside>

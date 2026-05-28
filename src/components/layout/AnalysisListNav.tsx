@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { listResultsClient } from '@/lib/client/backend';
-import { buildDashboardHref } from '@/lib/routes';
+import { buildAnalysisHref } from '@/lib/routes';
 import { buildRecentResultsViewModel, type RecentResultsViewModel } from '@/lib/view-models/analysis';
 import type { User } from '@/lib/types';
 
@@ -57,7 +57,7 @@ export function AnalysisListNav({ user }: Props) {
               <li key={r.analysis_id}>
                 <Link
                   className="analysis-nav-item"
-                  href={buildDashboardHref(r.repository, r.analysis_id)}
+                  href={buildAnalysisHref(r.repository, r.analysis_id)}
                   onClick={() => setOpen(false)}
                 >
                   <span className="analysis-nav-repo">{r.repository.replace(/^https?:\/\/github\.com\//, '')}</span>

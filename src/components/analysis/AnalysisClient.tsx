@@ -5,12 +5,17 @@ import { useEffect, useState } from 'react';
 import { AnalysisView } from '@/components/analysis/AnalysisView';
 import { Shell, type SidebarVulnItem } from '@/components/layout/Shell';
 import { BackendError } from '@/lib/backend-errors';
-import { getAnalysisResultClient, getCurrentUserClient } from '@/lib/client/backend';
-import { buildAnalysisDetailViewModel, type AnalysisDetailViewModel } from '@/lib/view-models/analysis';
+import { getAnalysisResultClient, getCurrentUserClient, getFindingDetailClient } from '@/lib/client/backend';
+import { buildAnalysisDetailViewModel, buildFindingDetailViewModel, type AnalysisDetailViewModel } from '@/lib/view-models/analysis';
 import type { User } from '@/lib/types';
 
-function loginReturnTo(repo: string, analysisId: string | null): string {
-  return `/analysis?repo=${encodeURIComponent(repo)}${analysisId ? `&analysis_id=${encodeURIComponent(analysisId)}` : ''}`;
+function loginReturnTo(repo: string, analysisId: string | null, findingId: string | null): string {
+  const params = new URLSearchParams();
+  if (repo) params.set('repo', repo);
+  if (analysisId) params.set('analysis_id', analysisId);
+  if (findingId) params.set('finding', findingId);
+  const query = params.toString();
+  return `/analysis${query ? `?${query}` : ''}`;
 }
 
 export function AnalysisClient() {
@@ -23,6 +28,9 @@ export function AnalysisClient() {
   const [vm, setVm] = useState<AnalysisDetailViewModel | null>(null);
   const [repo, setRepo] = useState(requestedRepo);
   const [error, setError] = useState('');
+  const [findingError, setFindingError] = useState('');
+  const [findingLoading, setFindingLoading] = useState(false);
+  const [selectedFinding, setSelectedFinding] = useState<AnalysisDetailViewModel['vuln_details'][number] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,28 +48,51 @@ export function AnalysisClient() {
         setRepo(nextVm.repo_url || requestedRepo);
       } catch (err) {
         if (err instanceof BackendError && err.kind === 'unauthenticated') {
-          router.replace(`/login?return_to=${encodeURIComponent(loginReturnTo(requestedRepo, analysisId))}`);
+          router.replace(`/login?return_to=${encodeURIComponent(loginReturnTo(requestedRepo, analysisId, selectedFindingId))}`);
           return;
         }
-        if (!cancelled) setError(err instanceof Error ? err.message : '상세 분석을 불러올 수 없습니다.');
+        if (!cancelled) setError(err instanceof Error ? err.message : '분석 결과를 불러올 수 없습니다.');
       }
     }
 
     void load();
     return () => { cancelled = true; };
-  }, [analysisId, requestedRepo, router]);
+  }, [analysisId, requestedRepo, router, selectedFindingId]);
+
+  const currentAnalysisId = vm?.analysis_id || analysisId;
+  const activeFindingId = vm?.vuln_details.some((v) => v.id === selectedFindingId) ? selectedFindingId : null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFinding() {
+      setSelectedFinding(null);
+      setFindingError('');
+      if (!currentAnalysisId || !activeFindingId) return;
+      setFindingLoading(true);
+      try {
+        const detail = await getFindingDetailClient(currentAnalysisId, activeFindingId);
+        if (cancelled) return;
+        setSelectedFinding(buildFindingDetailViewModel(detail).finding);
+      } catch (err) {
+        if (!cancelled) setFindingError(err instanceof Error ? err.message : '취약점 상세 Markdown을 불러올 수 없습니다.');
+      } finally {
+        if (!cancelled) setFindingLoading(false);
+      }
+    }
+
+    void loadFinding();
+    return () => { cancelled = true; };
+  }, [activeFindingId, currentAnalysisId]);
 
   if (error) {
-    return <Shell user={user} active="analysis"><section className="center-card error-card"><h1>상세 분석을 불러올 수 없습니다</h1><p>{error}</p></section></Shell>;
+    return <Shell user={user} active="analysis"><section className="center-card error-card"><h1>분석 결과를 불러올 수 없습니다</h1><p>{error}</p></section></Shell>;
   }
 
   if (!vm) {
-    return <Shell user={user} active="analysis"><section className="load-wrap"><div className="load-ring" /><h1>상세 분석을 불러오는 중입니다.</h1></section></Shell>;
+    return <Shell user={user} active="analysis"><section className="load-wrap"><div className="load-ring" /><h1>분석 결과를 불러오는 중입니다.</h1></section></Shell>;
   }
 
-  const currentAnalysisId = vm.analysis_id || analysisId;
-  const firstFindingId = vm.vuln_details[0]?.id ?? null;
-  const activeFindingId = vm.vuln_details.some((v) => v.id === selectedFindingId) ? selectedFindingId : firstFindingId;
   const vulnList: SidebarVulnItem[] = vm.vuln_details.map((v) => ({
     id: v.id,
     title: v.title,
@@ -73,5 +104,5 @@ export function AnalysisClient() {
     summary: v.summary,
     report_status: v.report_status,
   }));
-  return <Shell user={user} active="analysis" repo={repo} analysisId={currentAnalysisId} vulnList={vulnList} selectedFindingId={activeFindingId} showAnalysisPanel><AnalysisView vm={vm} repo={repo} analysisId={currentAnalysisId} /></Shell>;
+  return <Shell user={user} active="analysis" repo={repo} analysisId={currentAnalysisId} vulnList={vulnList} selectedFindingId={activeFindingId} showAnalysisPanel><AnalysisView vm={vm} repo={repo} analysisId={currentAnalysisId} selectedFindingId={activeFindingId} selectedFinding={selectedFinding} findingLoading={findingLoading} findingError={findingError} /></Shell>;
 }

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
-import { DashboardClient } from '@/components/dashboard/DashboardClient';
+import { AnalysisClient } from '@/components/analysis/AnalysisClient';
 
 export default function DashboardPage() {
-  return <Suspense fallback={null}><DashboardClient /></Suspense>;
+  return <Suspense fallback={null}><AnalysisClient /></Suspense>;
 }

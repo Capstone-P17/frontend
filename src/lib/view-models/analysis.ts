@@ -44,6 +44,8 @@ export type FindingReportStatus =
   | 'failed'
   | 'skipped_context_budget_exceeded';
 
+export type FindingReportSource = 'llm' | 'static_fallback' | string;
+
 export type FindingLlmExplanation = {
   why_vulnerable: string;
   how_to_fix: string;
@@ -51,6 +53,15 @@ export type FindingLlmExplanation = {
   cited_guideline_ids?: string[];
   citations?: unknown[];
   grounding_notes?: string | null;
+};
+
+export type CallChainDetail = {
+  label: string;
+  kind: string;
+  file: string;
+  line: number | null;
+  function: string | null;
+  source_link: string | null;
 };
 
 export type VulnerabilityFinding = {
@@ -397,22 +408,44 @@ function buildVulnerabilityDetail(vuln: Dict) {
   const line = Number(vuln.line);
   const normalizedLine = Number.isFinite(line) && line > 0 ? Math.trunc(line) : null;
   const callChain = Array.isArray(vuln.call_chain) ? vuln.call_chain.map(String) : [];
+  const callChainDetails = Array.isArray(vuln.call_chain_details)
+    ? vuln.call_chain_details
+        .map((item) => {
+          const detail = asRecord(item);
+          const detailLine = Number(detail.line);
+          return {
+            label: String(detail.label ?? ''),
+            kind: String(detail.kind ?? 'unknown'),
+            file: String(detail.file ?? ''),
+            line: Number.isFinite(detailLine) && detailLine > 0 ? Math.trunc(detailLine) : null,
+            function: detail.function ? String(detail.function) : null,
+            source_link: detail.source_link ? String(detail.source_link) : null,
+          };
+        })
+        .filter((item) => item.label)
+    : [];
   const recommendation = String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.');
   const displayType = vulnerabilityTypeToDisplayName(vuln.type ?? 'UNKNOWN');
   const report = asRecord(vuln.finding_report);
-  const reportTitle = compactText(report.title);
-  const reportSummary = compactText(report.summary);
+  const reportTitle = compactText(report.title ?? vuln.finding_report_title);
+  const reportSummary = compactText(report.summary ?? vuln.finding_report_summary);
   const description = String(vuln.description ?? '취약점 설명이 없습니다.');
   const title = reportTitle || displayType;
   const summary = reportSummary || compactText(description || recommendation, '', 140);
   const reportStatus = toFindingReportStatus(report.status ?? vuln.finding_report_status);
+  const reportMetadata = asRecord(report.metadata);
 
   return {
     id: String(vuln.id ?? ''),
     title,
     summary,
     report_status: reportStatus,
-    markdown_preview: compactText(report.markdown_preview ?? report.markdown, '', 220),
+    markdown_preview: compactText(report.markdown_preview ?? vuln.finding_report_markdown_preview ?? report.markdown, '', 220),
+    report_markdown: typeof report.markdown === 'string' ? report.markdown : '',
+    report_error: report.error ? String(report.error) : null,
+    report_model: reportMetadata.model ? String(reportMetadata.model) : null,
+    report_source: reportMetadata.source ? String(reportMetadata.source) as FindingReportSource : null,
+    report_generated_at: reportMetadata.generated_at ? String(reportMetadata.generated_at) : null,
     type: displayType,
     severity: severityToKoreanLabel(rawSeverity),
     raw_severity: rawSeverity,
@@ -425,6 +458,9 @@ function buildVulnerabilityDetail(vuln: Dict) {
     file: String(vuln.file ?? 'Unknown'),
     line: normalizedLine,
     function: vuln.function ? String(vuln.function) : null,
+    source_url: vuln.source_url ? String(vuln.source_url) : null,
+    source_ref: vuln.source_ref ? String(vuln.source_ref) : null,
+    source_link: vuln.source_link ? String(vuln.source_link) : null,
     code: String(vuln.code_snippet ?? '코드 정보가 없습니다.'),
     description,
     evidence: String(vuln.evidence ?? ''),
@@ -434,6 +470,7 @@ function buildVulnerabilityDetail(vuln: Dict) {
     confidence: vuln.confidence,
     confidence_reason: String(vuln.confidence_reason ?? ''),
     call_chain: callChain,
+    call_chain_details: callChainDetails,
     llm_explanation_status: toLlmExplanationStatus(vuln.llm_explanation_status),
     llm_explanation: toFindingLlmExplanation(vuln.llm_explanation),
     llm_explanation_error: vuln.llm_explanation_error ? String(vuln.llm_explanation_error) : null,
@@ -445,11 +482,27 @@ export function buildAnalysisDetailViewModel(response: Dict) {
   const vulnerabilities = asArray(analysis.vulnerabilities);
   const sortedVulnerabilities = [...vulnerabilities].sort(compareFindingOrder);
   const summary = asRecord(analysis.summary);
+  const bySeverity = asRecord(summary.by_severity);
   const byType = asRecord(summary.by_type);
   const byGuideCategory = asRecord(summary.by_guide_category);
+  const score = asRecord(summary.score);
+  const fileSummary = new Map<string, { count: number; severity: string; lines: Set<number> }>();
+  const severityCounts = countBySeverity(vulnerabilities, bySeverity);
   const vulnerabilityTypes = summarizeByType(vulnerabilities, byType);
   const guideCategories = summarizeByGuideCategory(vulnerabilities, byGuideCategory);
   const totalVulnerabilities = vulnerabilities.length || toInt(summary.total_vulnerabilities);
+
+  for (const vuln of sortedVulnerabilities) {
+    const file = String(vuln.file ?? '');
+    if (!file) continue;
+    const entry = fileSummary.get(file) ?? { count: 0, severity: 'LOW', lines: new Set<number>() };
+    entry.count += 1;
+    const line = toPositiveLine(vuln.line);
+    if (line !== null) entry.lines.add(line);
+    const rawSeverity = normalizeSeverity(vuln.severity);
+    if (severityRank(rawSeverity) > severityRank(entry.severity)) entry.severity = rawSeverity;
+    fileSummary.set(file, entry);
+  }
   const llmReport = typeof analysis.llm_report === 'string' ? analysis.llm_report.trim() : '';
   const llmStatus = String(analysis.llm_report_status ?? (llmReport ? 'generated' : 'unavailable'));
   return {
@@ -458,7 +511,29 @@ export function buildAnalysisDetailViewModel(response: Dict) {
     scan_date: formatDatetime(analysis.analyzed_at),
     total_vulnerabilities: totalVulnerabilities,
     files_analyzed: toInt(analysis.files_analyzed),
-    affected_files: new Set(vulnerabilities.map((vuln) => vuln.file).filter(Boolean)).size,
+    affected_files: fileSummary.size,
+    security_score: toInt(score.overall),
+    severity_counts: severityCounts,
+    vulnerability_types: vulnerabilityTypes.map((item) => ({ type: item.type, name: item.name, count: item.count })),
+    file_list: [...fileSummary.entries()]
+      .sort(([fileA, infoA], [fileB, infoB]) => {
+        const severityDiff = severityRank(infoB.severity) - severityRank(infoA.severity);
+        if (severityDiff !== 0) return severityDiff;
+        const countDiff = infoB.count - infoA.count;
+        if (countDiff !== 0) return countDiff;
+        return fileA.localeCompare(fileB);
+      })
+      .map(([file, info]) => {
+        const lineNumbers = [...info.lines].sort((a, b) => a - b);
+        return {
+          file,
+          vuln: info.count,
+          lines: lineNumbers.length,
+          line_numbers: lineNumbers,
+          line_summary: formatLineSummary(lineNumbers),
+          level: severityToKoreanLabel(info.severity),
+        };
+      }),
     call_graph: buildCallGraphView(analysis.call_graph),
     guide_distribution: guideCategories,
     vuln_distribution: vulnerabilityTypes.map((item) => ({ category: item.name, count: item.count })),
@@ -470,5 +545,16 @@ export function buildAnalysisDetailViewModel(response: Dict) {
       model: analysis.llm_model ? String(analysis.llm_model) : null,
       error: analysis.llm_report_error ? String(analysis.llm_report_error) : null,
     },
+  };
+}
+
+
+export function buildFindingDetailViewModel(response: Dict) {
+  const finding = asRecord(response.finding);
+  return {
+    analysis_id: String(response.analysis_id ?? ''),
+    repository: String(response.repository ?? ''),
+    analyzed_at: String(response.analyzed_at ?? ''),
+    finding: buildVulnerabilityDetail(finding),
   };
 }

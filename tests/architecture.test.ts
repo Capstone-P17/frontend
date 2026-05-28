@@ -84,7 +84,9 @@ describe('architecture boundaries', () => {
     expect(pageSource).not.toContain('<meta httpEquiv="refresh"');
     expect(clientSource).toContain('getAnalysisJobClient(jobId)');
     expect(clientSource).toContain('window.setInterval');
-    expect(clientSource).toContain('결과를 기다리는 중입니다.');
+    expect(clientSource).toContain('저장소 보안 분석을 진행 중입니다.');
+    expect(clientSource).toContain('bean_normal.png');
+    expect(clientSource).toContain('Finding report build');
     expect(clientSource).toContain('분석이 완료되었습니다.');
     expect(clientSource).toContain('결과 페이지로 이동 중입니다...');
     expect(clientSource).not.toContain('Polling:');
@@ -104,7 +106,7 @@ describe('architecture boundaries', () => {
       ['src/app/login/page.tsx', 'LoginClient'],
       ['src/app/auth/callback/page.tsx', 'AuthCallbackClient'],
       ['src/app/loading/page.tsx', 'LoadingPageClient'],
-      ['src/app/dashboard/page.tsx', 'DashboardClient'],
+      ['src/app/dashboard/page.tsx', 'AnalysisClient'],
       ['src/app/analysis/page.tsx', 'AnalysisClient'],
     ] as const;
 
@@ -119,4 +121,29 @@ describe('architecture boundaries', () => {
     expect(clientSource).toContain("credentials: 'include'");
     expect(clientSource).toContain('PUBLIC_BACKEND_BASE_URL');
   });
+
+  it('uses safe react markdown renderer with GFM and sanitize plugins', () => {
+    const source = fs.readFileSync(path.join(root, 'src/components/analysis/MarkdownContent.tsx'), 'utf8');
+    expect(source).toContain("from 'react-markdown'");
+    expect(source).toContain("from 'remark-gfm'");
+    expect(source).toContain("from 'rehype-sanitize'");
+    expect(source).toContain('skipHtml');
+    expect(source).not.toContain('dangerouslySetInnerHTML');
+    expect(source).not.toContain('rehype-raw');
+    expect(source).toContain('/^(https?:|mailto:)/i');
+    expect(source).toContain('markdown-table-scroll');
+  });
+
+  it('fetches canonical finding detail endpoint from the browser client', () => {
+    const clientSource = fs.readFileSync(path.join(root, 'src/lib/client/backend.ts'), 'utf8');
+    const analysisClientSource = fs.readFileSync(path.join(root, 'src/components/analysis/AnalysisClient.tsx'), 'utf8');
+    const panelSource = fs.readFileSync(path.join(root, 'src/components/layout/AnalysisSidePanel.tsx'), 'utf8');
+    const viewSource = fs.readFileSync(path.join(root, 'src/components/analysis/AnalysisView.tsx'), 'utf8');
+    expect(clientSource).toContain('/findings/${encodeURIComponent(findingId)}');
+    expect(analysisClientSource).toContain('getFindingDetailClient(currentAnalysisId, activeFindingId)');
+    expect(panelSource).toContain('buildFindingHref(repo, analysisId, v.id)');
+    expect(viewSource).not.toContain('<details');
+    expect(viewSource).not.toContain('VulnerabilityGroups');
+  });
+
 });

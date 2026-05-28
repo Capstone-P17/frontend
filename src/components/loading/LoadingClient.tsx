@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getAnalysisJobClient } from "@/lib/client/backend";
 import { useEffect, useState } from "react";
@@ -11,18 +12,33 @@ type Props = {
 
 const benchmarkScopeItems = [
 	{
-		label: "공식 샘플 기준",
-		text: "OWASP BenchmarkJava와 NIST SARD Juliet Java 1.3 일부 샘플로 회귀 테스트를 수행합니다.",
+		label: "저장소 구조 파악",
+		text: "Java 소스 파일을 수집하고 분석 가능한 파일 경로와 호출 그래프 후보를 정리합니다.",
 	},
 	{
-		label: "탐지 확인",
-		text: "SQL Injection, Weak Hash, Insecure Random 일부 패턴은 공식 샘플에서 탐지 가능함을 확인했습니다.",
+		label: "취약 흐름 추적",
+		text: "입력값, 민감 API, sink 호출부를 연결해 실제 코드 위치 중심으로 finding을 구성합니다.",
 	},
 	{
-		label: "한계 관리",
-		text: "분기, 컬렉션, 메서드 간 흐름이 필요한 일부 샘플은 known false negative로 분리해 추적합니다.",
+		label: "상세 리포트 생성",
+		text: "각 finding별 근거, 코드 맥락, 수정 방향을 Markdown 리포트로 정리합니다.",
 	},
 ];
+
+const scanSteps = [
+	"Repository clone",
+	"Java file indexing",
+	"Static flow analysis",
+	"Finding report build",
+];
+
+const statusLabels: Record<string, string> = {
+	queued: "대기열 등록",
+	running: "정적 분석 진행",
+	succeeded: "리포트 생성 완료",
+	failed: "분석 실패",
+	preparing: "작업 준비",
+};
 
 export function BenchmarkScopeNotice() {
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -37,10 +53,10 @@ export function BenchmarkScopeNotice() {
 	}, []);
 
 	return (
-		<div className="loading-benchmark-card" aria-label="공식 샘플 기준 탐지 범위">
+		<div className="loading-benchmark-card" aria-label="분석 진행 안내">
 			<div className="loading-benchmark-header">
-				<span>공식 샘플 기준 탐지 범위</span>
-				<b>선별 검증</b>
+				<span>분석 파이프라인</span>
+				<b>Finding-first</b>
 			</div>
 			<div className="loading-benchmark-slide" aria-live="polite">
 				<strong>{activeItem.label}</strong>
@@ -55,6 +71,72 @@ export function BenchmarkScopeNotice() {
 				))}
 			</div>
 		</div>
+	);
+}
+
+export function LoadingScanPanel({
+	repo,
+	status,
+	completed = false,
+}: {
+	repo: string;
+	status: string;
+	completed?: boolean;
+}) {
+	const activeStep = completed
+		? scanSteps.length - 1
+		: status === "running"
+			? 2
+			: status === "queued"
+				? 1
+				: 0;
+
+	return (
+		<section className="load-wrap">
+			<div className="loading-scan-card" aria-live="polite">
+				<div className="loading-scan-visual" aria-hidden="true">
+					<div className="loading-bean-stage">
+						<Image
+							src="/bean_normal.png"
+							alt=""
+							width={164}
+							height={164}
+							className="loading-bean"
+							priority
+						/>
+						<div className="loading-magnifier" />
+						<div className="loading-scan-dot dot-one" />
+						<div className="loading-scan-dot dot-two" />
+						<div className="loading-scan-dot dot-three" />
+					</div>
+				</div>
+
+				<div className="loading-scan-copy">
+					<span className="loading-status-pill">{statusLabels[status] ?? status}</span>
+					<h1>{completed ? "분석이 완료되었습니다." : "저장소 보안 분석을 진행 중입니다."}</h1>
+					<p>
+						{completed
+							? "결과 페이지로 이동 중입니다..."
+							: "소스코드의 취약 흐름을 추적하고 finding별 상세 리포트를 생성하고 있습니다."}
+					</p>
+					<div className="load-repo">🔗 {repo}</div>
+				</div>
+
+				<div className="loading-step-list" aria-label="분석 단계">
+					{scanSteps.map((step, index) => (
+						<div
+							className={`loading-step ${index < activeStep ? "done" : ""} ${index === activeStep && !completed ? "active" : ""}`}
+							key={step}
+						>
+							<span>{index + 1}</span>
+							<b>{step}</b>
+						</div>
+					))}
+				</div>
+			</div>
+
+			{!completed ? <BenchmarkScopeNotice /> : null}
+		</section>
 	);
 }
 
@@ -80,7 +162,7 @@ export function LoadingClient({ repo, jobId }: Props) {
 					setStatus("completed");
 					window.setTimeout(() => {
 						router.push(
-							`/dashboard?repo=${encodeURIComponent(repo)}&analysis_id=${encodeURIComponent(data.analysis_id ?? "")}`,
+							`/analysis?repo=${encodeURIComponent(repo)}&analysis_id=${encodeURIComponent(data.analysis_id ?? "")}`,
 						);
 					}, 900);
 					return;
@@ -123,21 +205,10 @@ export function LoadingClient({ repo, jobId }: Props) {
 	}
 
 	return (
-		<section className="load-wrap">
-			<div className="load-ring" />
-			<h1>
-				{status === "completed"
-					? "분석이 완료되었습니다."
-					: "결과를 기다리는 중입니다."}
-			</h1>
-			<div className="load-repo">🔗 {repo}</div>
-			<p>
-				{status === "completed"
-					? "결과 페이지로 이동 중입니다..."
-					: "GitHub 저장소를 다운로드하고 Java 소스코드의 보안 취약점을 분석하는 중입니다."}
-			</p>
-			<p className="muted">현재 상태: {jobStatus}</p>
-			{status !== "completed" ? <BenchmarkScopeNotice /> : null}
-		</section>
+		<LoadingScanPanel
+			completed={status === "completed"}
+			repo={repo}
+			status={status === "completed" ? "succeeded" : jobStatus}
+		/>
 	);
 }

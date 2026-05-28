@@ -127,6 +127,12 @@ export async function getAnalysisResultClient(analysisId?: string | null): Promi
   return clientBackendRequest<Record<string, unknown>>('/result');
 }
 
+export async function getFindingDetailClient(analysisId: string, findingId: string): Promise<Record<string, unknown>> {
+  return clientBackendRequest<Record<string, unknown>>(
+    `/result/${encodeURIComponent(analysisId)}/findings/${encodeURIComponent(findingId)}`,
+  );
+}
+
 export async function listResultsClient(limit = 5): Promise<Record<string, unknown>> {
   return clientBackendRequest<Record<string, unknown>>('/results', { query: { limit } });
 }

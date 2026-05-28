@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: 'P17 - 보안 취약점 검사',
-  description: 'GitHub 저장소 소스코드 보안 취약점 분석 프론트엔드',
+  title: 'DoUSECURE - 보안 취약점 검사',
+  description: 'DoUSECURE GitHub 저장소 소스코드 보안 취약점 분석 서비스',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
