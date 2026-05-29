@@ -1,5 +1,7 @@
 # DoUSECURE Frontend
 
+[![Frontend CI](https://github.com/Capstone-P17/frontend/actions/workflows/frontend-ci.yml/badge.svg?branch=main-v2)](https://github.com/Capstone-P17/frontend/actions/workflows/frontend-ci.yml)
+
 DoUSECURE Frontend는 GitHub 저장소 URL을 입력해 소스코드 취약점 분석을 요청하고, 백엔드가 반환한 탐지 결과를 대시보드와 상세 화면으로 보여주는 Next.js 웹 애플리케이션입니다.
 
 ![DoUSECURE home](docs/images/home.png)
