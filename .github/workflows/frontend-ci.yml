@@ -1,0 +1,51 @@
+name: Frontend CI
+
+on:
+  push:
+    branches:
+      - main-v2
+  pull_request:
+    branches:
+      - main-v2
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Run frontend checks
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_BACKEND_BASE_URL: http://localhost:8000
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level moderate
+
+      - name: Run lint
+        run: pnpm lint
+
+      - name: Run typecheck
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

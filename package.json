@@ -42,5 +42,11 @@
     "typescript": "5.9.3",
     "vitest": "latest"
   },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.14",
+      "qs": "6.15.2"
+    }
+  },
   "packageManager": "pnpm@10.33.0"
 }
