@@ -302,16 +302,10 @@ function buildFallbackMarkdown(detail: VulnerabilityDetail): string {
 	const patch = detail.safe_example
 		? buildFallbackDiff(detail)
 		: "백엔드 상세 Markdown을 불러오지 못한 경우입니다. 원본 파일 문맥 확인 후 아래 수정 방법을 적용하세요.";
-	return `# 요약
+return `# 요약
 ${detail.summary || detail.description}
 
-# 검증
-## 검증 기준
-- [x] 선택된 finding ID와 위치만 표시합니다.
-- [x] 저장된 코드 스니펫과 호출 경로만 사용해 맥락을 정리합니다.
-- [ ] 런타임 검증은 수행하지 않았습니다.
-
-## 검토 보고
+# 기본 정보
 - 취약점 ID: \`${detail.id}\`
 - 발견 위치: \`${location}\`
 - 함수: \`${detail.function ?? "unknown"}\`
