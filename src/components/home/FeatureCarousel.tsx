@@ -73,7 +73,7 @@ const slides: Slide[] = [
             <i style={{ width: '64%' }} />
           </div>
           <div>
-            <span>신뢰도 기준</span>
+            <span>신뢰도 근거</span>
             <i style={{ width: '48%' }} />
           </div>
         </div>

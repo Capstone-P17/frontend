@@ -322,13 +322,10 @@ ${callPath}
 ${detail.confidence_reason || "저장된 신뢰도 판단 근거가 제한적입니다."}
 
 ## 악용 가능성
-정적 분석 결과 기준으로 ${detail.severity} 심각도 검토가 필요합니다.
+${detail.severity} 심각도 finding으로 분류되어 우선 확인이 필요합니다.
 
 ## 영향
 ${detail.description}
-
-## 가정
-- 존재하지 않는 파일/라인/검증 결과를 추정하지 않습니다.
 
 # 수정 방법
 ${detail.recommendation}
