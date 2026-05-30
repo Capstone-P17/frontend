@@ -13,6 +13,16 @@ export type ClientBackendRequestOptions = {
 export type AnalysisJob = {
   job_id: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed' | string;
+  phase?: string;
+  message?: string;
+  progress?: {
+    percent?: number;
+    files_analyzed?: number;
+    files_total?: number;
+    findings_total?: number;
+    finding_reports_completed?: number;
+    finding_reports_total?: number;
+  };
   analysis_id?: string | null;
   error?: string | null;
   created_at?: string;

@@ -86,9 +86,11 @@ describe('architecture boundaries', () => {
     expect(clientSource).toContain('window.setInterval');
     expect(clientSource).toContain('저장소 보안 분석을 진행 중입니다.');
     expect(clientSource).toContain('bean_normal.png');
-    expect(clientSource).toContain('Finding report build');
+    expect(clientSource).toContain('리포트 생성');
+    expect(clientSource).toContain('finding_reports_completed');
+    expect(clientSource).toContain('발견 finding');
     expect(clientSource).toContain('분석이 완료되었습니다.');
-    expect(clientSource).toContain('결과 페이지로 이동 중입니다...');
+    expect(clientSource).toContain('결과 페이지로 이동 중입니다.');
     expect(clientSource).not.toContain('Polling:');
   });
 
