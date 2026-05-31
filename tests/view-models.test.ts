@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analysisResult, flatAnalysisResult } from './fixtures';
-import { buildAnalysisDetailViewModel, buildCapabilitiesViewModel, buildDashboardViewModel, buildFindingDetailViewModel, buildRecentResultsViewModel, severityRank, vulnerabilityTypeToDisplayName } from '@/lib/view-models/analysis';
+import { buildAnalysisDetailViewModel, buildCapabilitiesViewModel, buildDashboardViewModel, buildFindingDetailViewModel, buildRecentResultsViewModel, vulnerabilityTypeToDisplayName } from '@/lib/view-models/analysis';
 
 describe('analysis view model parity', () => {
   it('matches dashboard summary transformation from legacy contract', () => {
@@ -11,10 +11,20 @@ describe('analysis view model parity', () => {
     expect(vm.files_analyzed).toBe(7);
     expect(vm.affected_files).toBe(2);
     expect(vm.security_score).toBe(35);
-    expect(vm.severity_counts).toEqual({ critical: 1, high: 1, medium: 1, low: 0 });
     expect(vm.vulnerability_types).toEqual([
       { type: 'SQL_INJECTION', name: 'SQL Injection', count: 2 },
       { type: 'XSS', name: 'Cross-Site Scripting (XSS)', count: 1 },
+    ]);
+    expect(vm.guide_categories).toEqual([
+      {
+        category: '입력값 검증',
+        raw_category: '입력데이터 검증 및 표현',
+        count: 3,
+        items: [
+          { item: 'SQL 인젝션', raw_item: 'SQL 삽입', count: 2 },
+          { item: '크로스사이트 스크립트', raw_item: '크로스사이트 스크립트', count: 1 },
+        ],
+      },
     ]);
     expect(vm.file_list[0]).toEqual({
       file: 'src/A.java',
@@ -22,7 +32,6 @@ describe('analysis view model parity', () => {
       lines: 1,
       line_numbers: [10],
       line_summary: '10',
-      level: '치명적',
     });
   });
 
@@ -32,32 +41,35 @@ describe('analysis view model parity', () => {
     expect(vm.llm_report).toMatchObject({ status: 'generated', available: true, model: 'test-model' });
     expect(vm.llm_report.text).toContain('LLM 리포트입니다.');
     expect(vm.vuln_distribution).toContainEqual({ category: 'SQL Injection', count: 2 });
-    expect(vm.vuln_details[0]).toMatchObject({ severity: '치명적', cvss_score: 9.1, description: '취약점 설명이 없습니다.', evidence: '', confidence_reason: '', fix: '취약점에 적합한 보안 패턴을 적용하세요.' });
-    expect(vm.vuln_details[1]).toMatchObject({ severity: '위험', cvss_score: 8.1, cvss_vector: 'CVSS:3.1', evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', confidence_reason: '외부 입력이 SQL 실행 API까지 도달합니다.', call_chain: ['Controller', 'DAO'] });
+    expect(vm.guide_distribution[0]).toMatchObject({
+      category: '입력값 검증',
+      count: 3,
+    });
+    expect(vm.guide_distribution[0].items).toContainEqual({ item: 'SQL 인젝션', raw_item: 'SQL 삽입', count: 2 });
+    expect(vm.vuln_details[0]).toMatchObject({ evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', confidence_reason: '외부 입력이 SQL 실행 API까지 도달합니다.', call_chain: ['Controller', 'DAO'] });
+    expect(vm.vuln_details[1]).toMatchObject({ description: '취약점 설명이 없습니다.', evidence: '', confidence_reason: '', fix: '취약점에 적합한 보안 패턴을 적용하세요.' });
   });
 
-  it('derives dashboard severity counts from findings when summary is stale', () => {
+  it('derives dashboard counts from findings when summary is stale', () => {
     const vm = buildDashboardViewModel({
       analysis_result: {
         repository: 'https://github.com/example/verademo',
         files_analyzed: 3,
         summary: {
           total_vulnerabilities: 2,
-          by_severity: { CRITICAL: 0, HIGH: 0, MEDIUM: 2, LOW: 0 },
           by_type: { XSS: 2 },
           score: { overall: 80 },
         },
         vulnerabilities: [
-          { id: 'medium', type: 'XSS', severity: 'MEDIUM', file: 'src/B.java', line: 20 },
-          { id: 'high', type: 'SQL_INJECTION', severity: 'HIGH', file: 'src/A.java', line: 10 },
+          { id: 'xss', type: 'XSS', file: 'src/B.java', line: 20 },
+          { id: 'sql', type: 'SQL_INJECTION', file: 'src/A.java', line: 10 },
         ],
       },
     });
 
     expect(vm.total_vulnerabilities).toBe(2);
-    expect(vm.severity_counts).toEqual({ critical: 0, high: 1, medium: 1, low: 0 });
-    expect(vm.vulnerability_types[0]).toMatchObject({ type: 'SQL_INJECTION', count: 1 });
-    expect(vm.file_list[0]).toMatchObject({ file: 'src/A.java', line_summary: '10', level: '위험' });
+    expect(vm.vulnerability_types).toContainEqual({ type: 'SQL_INJECTION', name: 'SQL Injection', count: 1 });
+    expect(vm.file_list[0]).toMatchObject({ file: 'src/A.java', line_summary: '10' });
   });
 
   it('shows actual vulnerable line numbers on dashboard file summaries', () => {
@@ -65,12 +77,12 @@ describe('analysis view model parity', () => {
       analysis_result: {
         summary: { total_vulnerabilities: 6 },
         vulnerabilities: [
-          { type: 'XSS', severity: 'MEDIUM', file: 'src/View.java', line: 11 },
-          { type: 'XSS', severity: 'MEDIUM', file: 'src/View.java', line: 3 },
-          { type: 'XSS', severity: 'MEDIUM', file: 'src/View.java', line: 7 },
-          { type: 'XSS', severity: 'MEDIUM', file: 'src/View.java', line: 20 },
-          { type: 'XSS', severity: 'MEDIUM', file: 'src/View.java', line: 25 },
-          { type: 'XSS', severity: 'MEDIUM', file: 'src/View.java', line: 7 },
+          { type: 'XSS', file: 'src/View.java', line: 11 },
+          { type: 'XSS', file: 'src/View.java', line: 3 },
+          { type: 'XSS', file: 'src/View.java', line: 7 },
+          { type: 'XSS', file: 'src/View.java', line: 20 },
+          { type: 'XSS', file: 'src/View.java', line: 25 },
+          { type: 'XSS', file: 'src/View.java', line: 7 },
         ],
       },
     });
@@ -82,21 +94,6 @@ describe('analysis view model parity', () => {
     });
   });
 
-  it('uses the same severity order for Korean and raw labels', () => {
-    expect(severityRank('위험')).toBeGreaterThan(severityRank('경고'));
-    const vm = buildAnalysisDetailViewModel({
-      analysis_result: {
-        summary: { total_vulnerabilities: 2 },
-        vulnerabilities: [
-          { id: 'low', type: 'XSS', severity: '보통', file: 'src/B.java', line: 20 },
-          { id: 'high', type: 'SQL_INJECTION', severity: '위험', file: 'src/A.java', line: 10 },
-        ],
-      },
-    });
-    expect(vm.vuln_details.map((item) => item.severity)).toEqual(['위험', '보통']);
-  });
-
-
   it('maps compact finding report fields for finding-first sidebar data', () => {
     const vm = buildAnalysisDetailViewModel({
       analysis_id: 'analysis-report',
@@ -106,7 +103,6 @@ describe('analysis view model parity', () => {
           {
             id: 'fallback-title',
             type: 'SQL_INJECTION',
-            severity: 'HIGH',
             file: 'src/A.java',
             line: 10,
             description: 'A '.repeat(100),
@@ -114,7 +110,6 @@ describe('analysis view model parity', () => {
           {
             id: 'report-title',
             type: 'XSS',
-            severity: 'MEDIUM',
             file: 'src/B.java',
             line: 20,
             finding_report: {
@@ -152,7 +147,6 @@ it('maps canonical finding detail responses with full markdown separately from c
     finding: {
       id: 'v1',
       type: 'SQL_INJECTION',
-      severity: 'HIGH',
       file: 'src/Login.java',
       line: 42,
       description: 'SQL 문자열 결합',

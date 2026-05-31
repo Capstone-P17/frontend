@@ -8,7 +8,6 @@ import type { AnalysisDetailViewModel } from "@/lib/view-models/analysis";
 type VulnerabilityDetail = AnalysisDetailViewModel["vuln_details"][number];
 type GuideDistributionItem = AnalysisDetailViewModel["guide_distribution"][number];
 type FileSummaryItem = AnalysisDetailViewModel["file_list"][number];
-type VulnerabilityTypeItem = AnalysisDetailViewModel["vulnerability_types"][number];
 
 type KpiItem = {
 	label: string;
@@ -16,17 +15,6 @@ type KpiItem = {
 	tone?: "danger";
 	compact?: boolean;
 };
-
-function metadataText(detail: VulnerabilityDetail): string {
-	return [
-		detail.cwe ? `CWE: ${detail.cwe}` : "",
-		detail.cvss_score !== undefined ? `CVSS: ${detail.cvss_score}` : "",
-		detail.cvss_vector ? String(detail.cvss_vector) : "",
-		detail.confidence ? `신뢰도: ${detail.confidence}` : "",
-	]
-		.filter(Boolean)
-		.join(" · ");
-}
 
 function reportStatusText(status: string): string {
 	const labels: Record<string, string> = {
@@ -52,19 +40,58 @@ function scoreLabel(score: number): string {
 	return "양호";
 }
 
-function severityTotal(severity: AnalysisDetailViewModel["severity_counts"]): number {
-	return severity.critical + severity.high + severity.medium + severity.low;
+function findingBadgeText(findingId: string): string {
+	const match = findingId.match(/(\d+)$/);
+	return match ? `#${match[1]}` : findingId || "Finding";
 }
 
-function severityPercent(count: number, total: number): number {
-	if (!total) return 0;
-	return Math.max(3, Math.round((count / total) * 100));
-}
+function sanitizeFindingMarkdownForDisplay(markdown: string): string {
+	const hiddenMetadataTerms = [
+		"심각" + "도",
+		"위험" + "도",
+		"sever" + "ity",
+		"C" + "WE",
+		"C" + "VSS",
+		"C" + "VSS\\s*점수",
+		"C" + "VSS\\s*벡터",
+		"신뢰도",
+		"confidence",
+	].join("|");
+	const metadataLinePattern = new RegExp(
+		`^\\s*(?:[-*]\\s*)?(?:\\*\\*)?(?:${hiddenMetadataTerms})(?:\\*\\*)?\\s*[:：|]`,
+		"i",
+	);
+	const metadataHeadingPattern = new RegExp(
+		`^\\s{0,3}#{1,6}\\s*(?:${hiddenMetadataTerms})\\b`,
+		"i",
+	);
+	const metadataTablePattern = new RegExp(
+		`^\\s*\\|.*(?:${hiddenMetadataTerms}).*\\|\\s*$`,
+		"i",
+	);
 
-function vulnCountTone(count: number): string {
-	if (count >= 70) return "danger-text";
-	if (count >= 30) return "warning-text";
-	return "normal-text";
+	const visibleLines: string[] = [];
+	let removedMetadataTableHeader = false;
+	for (const line of markdown.split("\n")) {
+		const isMarkdownTableSeparator = /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+		if (removedMetadataTableHeader && isMarkdownTableSeparator) {
+			removedMetadataTableHeader = false;
+			continue;
+		}
+		removedMetadataTableHeader = false;
+		if (metadataLinePattern.test(line)) continue;
+		if (metadataHeadingPattern.test(line)) continue;
+		if (metadataTablePattern.test(line)) {
+			removedMetadataTableHeader = true;
+			continue;
+		}
+		visibleLines.push(line);
+	}
+
+	return visibleLines
+		.join("\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 }
 
 function ResultHero({ repo, analysisId, score }: { repo: string; analysisId?: string | null; score: number }) {
@@ -117,109 +144,42 @@ function GuideDistributionCard({
 		<Card className="dashboard-card">
 			<CardContent className="dashboard-card-content">
 				<div className="dashboard-card-header">
-					<span>가이드 대분류 분포</span>
+					<span>가이드 분류별 취약점</span>
 					<Badge variant="outline">{items.length}개 분류</Badge>
 				</div>
 
-				<div className="analysis-bars" aria-label="가이드 대분류별 취약점 수">
+				<div className="guide-breakdown-list" aria-label="가이드 대분류와 세부 항목별 취약점 수">
 					{items.map((item) => (
-						<div className="bar-row" key={item.category}>
-							<span>{item.category}</span>
-							<div aria-hidden="true">
-								<i
-									style={{
-										width: `${Math.round((item.count / maxCount) * 100)}%`,
-									}}
-								/>
+						<div className="guide-breakdown-group" key={item.category}>
+							<div className="bar-row guide-category-row">
+								<span>{item.category}</span>
+								<div aria-hidden="true">
+									<i
+										style={{
+											width: `${Math.round((item.count / maxCount) * 100)}%`,
+										}}
+									/>
+								</div>
+								<b>{item.count}</b>
 							</div>
-							<b>{item.count}</b>
+							{item.items.length ? (
+								<div className="guide-item-list" aria-label={`${item.category} 세부 항목별 취약점 수`}>
+									{item.items.map((subItem) => (
+										<div className="guide-item-row" key={subItem.raw_item || subItem.item}>
+											<span>{subItem.item}</span>
+											<i aria-hidden="true" />
+											<b>{subItem.count}</b>
+										</div>
+									))}
+								</div>
+							) : (
+								<p className="guide-item-empty">세부 항목 정보가 없습니다.</p>
+							)}
 						</div>
 					))}
 				</div>
 			</CardContent>
 		</Card>
-	);
-}
-
-function CallGraphCard({
-	callGraph,
-}: {
-	callGraph: AnalysisDetailViewModel["call_graph"];
-}) {
-	if (!callGraph.available) return null;
-
-	return (
-		<Card className="dashboard-card">
-			<CardContent className="dashboard-card-content">
-				<div className="dashboard-card-header">
-					<span>호출 그래프</span>
-					<Badge variant="outline">
-						노드 {callGraph.node_count.toLocaleString()} · 엣지{" "}
-						{callGraph.edge_count.toLocaleString()}
-					</Badge>
-				</div>
-
-				<div className="call-preview">
-					{callGraph.preview.length ? (
-						callGraph.preview.map((item) => <span key={item}>{item}</span>)
-					) : (
-						<span className="dashboard-muted">
-							표시할 호출 그래프 미리보기가 없습니다.
-						</span>
-					)}
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-function SeverityCard({ vm, total }: { vm: AnalysisDetailViewModel; total: number }) {
-	return (
-		<Card className="dashboard-card">
-			<CardContent className="dashboard-card-content">
-				<div className="dashboard-card-header">
-					<span>심각도 분포</span>
-					<Badge variant="outline">총 {vm.total_vulnerabilities}건</Badge>
-				</div>
-
-				<div className="severity-stack" aria-label="심각도별 취약점 수">
-					<SeverityRow count={vm.severity_counts.critical} label="치명적" tone="danger" total={total} />
-					<SeverityRow count={vm.severity_counts.high} label="위험" tone="danger" total={total} />
-					<SeverityRow count={vm.severity_counts.medium} label="경고" tone="warning" total={total} />
-					<SeverityRow count={vm.severity_counts.low} label="보통" tone="normal" total={total} />
-				</div>
-
-				<VulnerabilityTypeChips types={vm.vulnerability_types.slice(0, 5)} />
-			</CardContent>
-		</Card>
-	);
-}
-
-function SeverityRow({ count, label, tone, total }: { count: number; label: string; tone: "danger" | "warning" | "normal"; total: number }) {
-	return (
-		<div className="severity-row">
-			<span>{label}</span>
-			<div aria-hidden="true">
-				<i className={tone} style={{ width: `${severityPercent(count, total)}%` }} />
-			</div>
-			<b>{count}</b>
-		</div>
-	);
-}
-
-function VulnerabilityTypeChips({ types }: { types: VulnerabilityTypeItem[] }) {
-	return (
-		<div className="type-chip-list" aria-label="상위 취약점 유형">
-			{types.length ? (
-				types.map((type) => (
-					<Badge className="type-chip" key={type.type} variant="secondary">
-						{type.name} · {type.count}
-					</Badge>
-				))
-			) : (
-				<span className="dashboard-muted">발견된 취약점 유형이 없습니다.</span>
-			)}
-		</div>
 	);
 }
 
@@ -237,7 +197,6 @@ function FileListCard({ files }: { files: FileSummaryItem[] }) {
 						<span role="columnheader">파일명</span>
 						<span role="columnheader">취약점</span>
 						<span role="columnheader">탐지 라인</span>
-						<span role="columnheader">위험도</span>
 					</div>
 
 					{files.length ? (
@@ -255,11 +214,10 @@ function FileRow({ file }: { file: FileSummaryItem }) {
 	return (
 		<div className="dashboard-file-row" role="row">
 			<span className="file-name" role="cell">{file.file}</span>
-			<span className={vulnCountTone(file.vuln)} role="cell">{file.vuln}</span>
-			<span className="line-summary" role="cell">{file.line_summary}</span>
 			<span role="cell">
-				<span className={`level-badge level-${file.level}`}>{file.level}</span>
+				<span className="finding-number-badge">{file.vuln}</span>
 			</span>
+			<span className="line-summary" role="cell">{file.line_summary}</span>
 		</div>
 	);
 }
@@ -267,9 +225,8 @@ function FileRow({ file }: { file: FileSummaryItem }) {
 function OverviewPage({ vm, repo, analysisId }: { vm: AnalysisDetailViewModel; repo: string; analysisId?: string | null }) {
 	const guideDistribution = vm.guide_distribution.length
 		? vm.guide_distribution
-		: [{ category: "공식 가이드 매핑 없음", count: 0 }];
+		: [{ category: "공식 가이드 매핑 없음", raw_category: "", count: 0, items: [] }];
 	const guideMaxCount = Math.max(1, ...guideDistribution.map((item) => item.count));
-	const totalSeverity = severityTotal(vm.severity_counts);
 
 	return (
 		<>
@@ -283,12 +240,10 @@ function OverviewPage({ vm, repo, analysisId }: { vm: AnalysisDetailViewModel; r
 				]}
 			/>
 			<div className="dashboard-summary-stack">
-				<SeverityCard total={totalSeverity} vm={vm} />
 				<section className="analysis-overview-grid" aria-label="분석 개요 보조 정보">
 					<GuideDistributionCard items={guideDistribution} maxCount={guideMaxCount} />
-					<CallGraphCard callGraph={vm.call_graph} />
+					<FileListCard files={vm.file_list} />
 				</section>
-				<FileListCard files={vm.file_list} />
 			</div>
 		</>
 	);
@@ -322,7 +277,7 @@ ${callPath}
 ${detail.confidence_reason || "저장된 신뢰도 판단 근거가 제한적입니다."}
 
 ## 악용 가능성
-${detail.severity} 심각도 finding으로 분류되어 우선 확인이 필요합니다.
+저장된 정적 분석 근거와 코드 맥락을 기준으로 우선 확인이 필요합니다.
 
 ## 영향
 ${detail.description}
@@ -477,8 +432,7 @@ function FindingDetailPage({
 }) {
 	const location = `${detail.file}${detail.line ? `:${detail.line}` : ""}`;
 	const reportStatus = detail.report_status === "unavailable" && findingLoading ? "loading" : detail.report_status;
-	const markdown = detail.report_markdown || buildFallbackMarkdown(detail);
-	const metadata = metadataText(detail);
+	const markdown = sanitizeFindingMarkdownForDisplay(detail.report_markdown || buildFallbackMarkdown(detail));
 
 	return (
 		<article className="finding-detail-page" id={`finding-${detail.id}`}>
@@ -488,16 +442,14 @@ function FindingDetailPage({
 					<h2>{detail.title}</h2>
 					<p>{detail.summary || detail.description}</p>
 				</div>
-				<Badge className={`level-badge level-${detail.severity}`} variant="outline">
-					{detail.severity}
+				<Badge className="finding-number-badge" variant="outline">
+					{findingBadgeText(detail.id)}
 				</Badge>
 			</header>
 
 			<div className="finding-meta-grid" aria-label="선택된 취약점 메타데이터">
-				<MetadataItem label="심각도" value={detail.severity} />
 				<MetadataItem label="파일 / 라인" value={location} />
 				<MetadataItem label="함수" value={detail.function} />
-				<MetadataItem label="CWE / CVSS / 신뢰도" value={metadata} />
 				<MetadataItem label="저장소" value={repo || "-"} />
 				<MetadataItem label="리포트 상태" value={[reportStatusText(reportStatus), detail.report_model].filter(Boolean).join(" · ")} />
 			</div>

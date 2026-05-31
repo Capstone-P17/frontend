@@ -28,12 +28,10 @@ function useMounted() {
   return useSyncExternalStore(subscribeMounted, getMountedSnapshot, getServerMountedSnapshot);
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: '#ff5757',
-  HIGH: '#ff8c42',
-  MEDIUM: '#e6b800',
-  LOW: '#48CFCB',
-};
+function findingBadgeText(findingId: string): string {
+  const match = findingId.match(/(\d+)$/);
+  return match ? `#${match[1]}` : findingId || 'Finding';
+}
 
 export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], selectedFindingId }: Props) {
   const [collapsed, setCollapsed] = useState(false);
@@ -110,10 +108,9 @@ export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], select
                     >
                       <span
                         className="analysis-side-vuln-badge"
-                        style={{ background: SEVERITY_COLORS[v.raw_severity] ?? '#48CFCB' }}
-                        aria-label={v.severity}
+                        aria-label={`Finding ${v.id}`}
                       >
-                        {v.severity.slice(0, 1)}
+                        {findingBadgeText(v.id)}
                       </span>
                       <div className="analysis-side-vuln-info">
                         <span className="analysis-side-vuln-type">{v.title}</span>

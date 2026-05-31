@@ -1,21 +1,3 @@
-export const SEVERITY_LABELS: Record<string, string> = {
-  CRITICAL: '치명적',
-  HIGH: '위험',
-  MEDIUM: '경고',
-  LOW: '보통',
-};
-
-const SEVERITY_ALIASES: Record<string, keyof typeof SEVERITY_LABELS> = {
-  CRITICAL: 'CRITICAL',
-  HIGH: 'HIGH',
-  MEDIUM: 'MEDIUM',
-  LOW: 'LOW',
-  치명적: 'CRITICAL',
-  위험: 'HIGH',
-  경고: 'MEDIUM',
-  보통: 'LOW',
-};
-
 export const TYPE_DISPLAY: Record<string, string> = {
   SQL_INJECTION: 'SQL Injection',
   XSS: 'Cross-Site Scripting (XSS)',
@@ -25,6 +7,14 @@ export const TYPE_DISPLAY: Record<string, string> = {
   INSECURE_RANDOM: 'Insecure Randomness',
   WEAK_HASH: 'Weak Cryptographic Hash',
   DANGEROUS_FILE_UPLOAD: 'Dangerous File Upload',
+};
+
+const GUIDE_CATEGORY_DISPLAY: Record<string, string> = {
+  '입력데이터 검증 및 표현': '입력값 검증',
+};
+
+const GUIDE_ITEM_DISPLAY: Record<string, string> = {
+  'SQL 삽입': 'SQL 인젝션',
 };
 
 export type Dict = Record<string, unknown>;
@@ -67,7 +57,6 @@ export type CallChainDetail = {
 export type VulnerabilityFinding = {
   id: string;
   type: string;
-  severity: string;
   file: string;
   line?: number | null;
   function?: string | null;
@@ -102,30 +91,24 @@ export function getFindingDisplayText(finding: VulnerabilityFinding) {
   };
 }
 
-export function normalizeSeverity(severity: unknown): keyof typeof SEVERITY_LABELS {
-  const raw = String(severity ?? '').trim();
-  return SEVERITY_ALIASES[raw.toUpperCase()] ?? SEVERITY_ALIASES[raw] ?? 'LOW';
-}
-
-export function severityToKoreanLabel(severity: unknown): string {
-  return SEVERITY_LABELS[normalizeSeverity(severity)];
-}
-
-export function severityRank(severity: unknown): number {
-  const ranks: Record<keyof typeof SEVERITY_LABELS, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
-  return ranks[normalizeSeverity(severity)];
-}
-
 export function vulnerabilityTypeToDisplayName(vulnType: unknown): string {
   const raw = String(vulnType ?? '');
   if (!raw) return 'Unknown';
   return TYPE_DISPLAY[raw] ?? raw.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function compareFindingOrder(a: Dict, b: Dict): number {
-  const severityDiff = severityRank(b.severity) - severityRank(a.severity);
-  if (severityDiff !== 0) return severityDiff;
+function guideCategoryToDisplayName(category: unknown): string {
+  const raw = String(category ?? '').trim();
+  return GUIDE_CATEGORY_DISPLAY[raw] ?? raw;
+}
 
+function guideItemToDisplayName(item: unknown, fallbackType?: unknown): string {
+  const raw = String(item ?? '').trim();
+  if (raw) return GUIDE_ITEM_DISPLAY[raw] ?? raw;
+  return vulnerabilityTypeToDisplayName(fallbackType ?? 'UNKNOWN');
+}
+
+function compareFindingOrder(a: Dict, b: Dict): number {
   const fileDiff = String(a.file ?? '').localeCompare(String(b.file ?? ''));
   if (fileDiff !== 0) return fileDiff;
 
@@ -135,68 +118,65 @@ function compareFindingOrder(a: Dict, b: Dict): number {
   return String(a.type ?? '').localeCompare(String(b.type ?? ''));
 }
 
-function countBySeverity(vulnerabilities: Dict[], fallback: Dict) {
-  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
-
-  if (!vulnerabilities.length) {
-    for (const [severity, count] of Object.entries(fallback)) {
-      const normalized = normalizeSeverity(severity);
-      if (normalized === 'CRITICAL') counts.critical += toInt(count);
-      if (normalized === 'HIGH') counts.high += toInt(count);
-      if (normalized === 'MEDIUM') counts.medium += toInt(count);
-      if (normalized === 'LOW') counts.low += toInt(count);
-    }
-    return counts;
-  }
-
-  for (const vuln of vulnerabilities) {
-    const severity = normalizeSeverity(vuln.severity);
-    if (severity === 'CRITICAL') counts.critical += 1;
-    if (severity === 'HIGH') counts.high += 1;
-    if (severity === 'MEDIUM') counts.medium += 1;
-    if (severity === 'LOW') counts.low += 1;
-  }
-  return counts;
-}
-
 function summarizeByType(vulnerabilities: Dict[], fallback: Dict) {
   if (!vulnerabilities.length) {
     return Object.entries(fallback)
-      .map(([type, count]) => ({ type, name: vulnerabilityTypeToDisplayName(type), count: toInt(count), rank: 0 }))
+      .map(([type, count]) => ({ type, name: vulnerabilityTypeToDisplayName(type), count: toInt(count) }))
       .filter((item) => item.count > 0)
       .sort((a, b) => a.type.localeCompare(b.type));
   }
 
-  const summary = new Map<string, { count: number; rank: number }>();
+  const summary = new Map<string, number>();
   for (const vuln of vulnerabilities) {
     const type = String(vuln.type ?? 'UNKNOWN');
-    const entry = summary.get(type) ?? { count: 0, rank: 0 };
-    entry.count += 1;
-    entry.rank = Math.max(entry.rank, severityRank(vuln.severity));
-    summary.set(type, entry);
+    summary.set(type, (summary.get(type) ?? 0) + 1);
   }
 
   return [...summary.entries()]
-    .map(([type, info]) => ({ type, name: vulnerabilityTypeToDisplayName(type), count: info.count, rank: info.rank }))
-    .sort((a, b) => b.rank - a.rank || b.count - a.count || a.name.localeCompare(b.name));
+    .map(([type, count]) => ({ type, name: vulnerabilityTypeToDisplayName(type), count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 function summarizeByGuideCategory(vulnerabilities: Dict[], fallback: Dict) {
   if (!vulnerabilities.length) {
     return Object.entries(fallback)
-      .map(([category, count]) => ({ category, count: toInt(count) }))
+      .map(([category, count]) => ({
+        category: guideCategoryToDisplayName(category),
+        raw_category: category,
+        count: toInt(count),
+        items: [] as Array<{ item: string; raw_item: string; count: number }>,
+      }))
       .filter((item) => item.count > 0);
   }
 
-  const summary = new Map<string, number>();
+  const summary = new Map<string, { category: string; raw_category: string; count: number; items: Map<string, { item: string; raw_item: string; count: number }> }>();
   for (const vuln of vulnerabilities) {
-    const category = String(vuln.guide_category ?? '').trim();
-    if (!category) continue;
-    summary.set(category, (summary.get(category) ?? 0) + 1);
+    const rawCategory = String(vuln.guide_category ?? '').trim();
+    if (!rawCategory) continue;
+    const category = guideCategoryToDisplayName(rawCategory);
+    const entry = summary.get(rawCategory) ?? {
+      category,
+      raw_category: rawCategory,
+      count: 0,
+      items: new Map<string, { item: string; raw_item: string; count: number }>(),
+    };
+    entry.count += 1;
+
+    const rawItem = String(vuln.guide_item ?? '').trim() || String(vuln.type ?? 'UNKNOWN');
+    const item = guideItemToDisplayName(vuln.guide_item, vuln.type);
+    const itemEntry = entry.items.get(rawItem) ?? { item, raw_item: rawItem, count: 0 };
+    itemEntry.count += 1;
+    entry.items.set(rawItem, itemEntry);
+    summary.set(rawCategory, entry);
   }
 
   return [...summary.entries()]
-    .map(([category, count]) => ({ category, count }))
+    .map(([, value]) => ({
+      category: value.category,
+      raw_category: value.raw_category,
+      count: value.count,
+      items: [...value.items.values()].sort((a, b) => b.count - a.count || a.item.localeCompare(b.item)),
+    }))
     .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
 }
 
@@ -292,12 +272,10 @@ export function buildDashboardViewModel(response: Dict) {
   const vulnerabilities = asArray(analysis.vulnerabilities);
   const sortedVulnerabilities = [...vulnerabilities].sort(compareFindingOrder);
   const summary = asRecord(analysis.summary);
-  const bySeverity = asRecord(summary.by_severity);
   const byType = asRecord(summary.by_type);
   const byGuideCategory = asRecord(summary.by_guide_category);
   const score = asRecord(summary.score);
-  const fileSummary = new Map<string, { count: number; severity: string; lines: Set<number> }>();
-  const severityCounts = countBySeverity(vulnerabilities, bySeverity);
+  const fileSummary = new Map<string, { count: number; lines: Set<number> }>();
   const vulnerabilityTypes = summarizeByType(vulnerabilities, byType);
   const guideCategories = summarizeByGuideCategory(vulnerabilities, byGuideCategory);
   const totalVulnerabilities = vulnerabilities.length || toInt(summary.total_vulnerabilities);
@@ -305,12 +283,10 @@ export function buildDashboardViewModel(response: Dict) {
   for (const vuln of sortedVulnerabilities) {
     const file = String(vuln.file ?? '');
     if (!file) continue;
-    const entry = fileSummary.get(file) ?? { count: 0, severity: 'LOW', lines: new Set<number>() };
+    const entry = fileSummary.get(file) ?? { count: 0, lines: new Set<number>() };
     entry.count += 1;
     const line = toPositiveLine(vuln.line);
     if (line !== null) entry.lines.add(line);
-    const rawSeverity = normalizeSeverity(vuln.severity);
-    if (severityRank(rawSeverity) > severityRank(entry.severity)) entry.severity = rawSeverity;
     fileSummary.set(file, entry);
   }
 
@@ -322,13 +298,10 @@ export function buildDashboardViewModel(response: Dict) {
     files_analyzed: toInt(analysis.files_analyzed),
     affected_files: fileSummary.size,
     security_score: toInt(score.overall),
-    severity_counts: severityCounts,
     vulnerability_types: vulnerabilityTypes.map((item) => ({ type: item.type, name: item.name, count: item.count })),
     guide_categories: guideCategories,
     file_list: [...fileSummary.entries()]
       .sort(([fileA, infoA], [fileB, infoB]) => {
-        const severityDiff = severityRank(infoB.severity) - severityRank(infoA.severity);
-        if (severityDiff !== 0) return severityDiff;
         const countDiff = infoB.count - infoA.count;
         if (countDiff !== 0) return countDiff;
         return fileA.localeCompare(fileB);
@@ -341,7 +314,6 @@ export function buildDashboardViewModel(response: Dict) {
           lines: lineNumbers.length,
           line_numbers: lineNumbers,
           line_summary: formatLineSummary(lineNumbers),
-          level: severityToKoreanLabel(info.severity),
         };
       }),
   };
@@ -368,7 +340,6 @@ export function buildRecentResultsViewModel(response: Dict) {
     language: String(item.language ?? 'java'),
     files_analyzed: toInt(item.files_analyzed),
     total_vulnerabilities: toInt(item.total_vulnerabilities),
-    severity_counts: asRecord(item.severity_counts),
   }));
 }
 
@@ -403,8 +374,6 @@ function buildCallGraphView(callGraph: unknown) {
 }
 
 function buildVulnerabilityDetail(vuln: Dict) {
-  const rawSeverity = normalizeSeverity(vuln.severity);
-  const cvss = typeof vuln.cvss === 'number' ? { score: vuln.cvss } : asRecord(vuln.cvss);
   const line = Number(vuln.line);
   const normalizedLine = Number.isFinite(line) && line > 0 ? Math.trunc(line) : null;
   const callChain = Array.isArray(vuln.call_chain) ? vuln.call_chain.map(String) : [];
@@ -447,14 +416,9 @@ function buildVulnerabilityDetail(vuln: Dict) {
     report_source: reportMetadata.source ? String(reportMetadata.source) as FindingReportSource : null,
     report_generated_at: reportMetadata.generated_at ? String(reportMetadata.generated_at) : null,
     type: displayType,
-    severity: severityToKoreanLabel(rawSeverity),
-    raw_severity: rawSeverity,
-    cwe: vuln.cwe,
     guide_source: String(vuln.guide_source ?? ''),
     guide_category: String(vuln.guide_category ?? ''),
     guide_item: String(vuln.guide_item ?? ''),
-    cvss_score: cvss.score,
-    cvss_vector: cvss.vector,
     file: String(vuln.file ?? 'Unknown'),
     line: normalizedLine,
     function: vuln.function ? String(vuln.function) : null,
@@ -482,12 +446,10 @@ export function buildAnalysisDetailViewModel(response: Dict) {
   const vulnerabilities = asArray(analysis.vulnerabilities);
   const sortedVulnerabilities = [...vulnerabilities].sort(compareFindingOrder);
   const summary = asRecord(analysis.summary);
-  const bySeverity = asRecord(summary.by_severity);
   const byType = asRecord(summary.by_type);
   const byGuideCategory = asRecord(summary.by_guide_category);
   const score = asRecord(summary.score);
-  const fileSummary = new Map<string, { count: number; severity: string; lines: Set<number> }>();
-  const severityCounts = countBySeverity(vulnerabilities, bySeverity);
+  const fileSummary = new Map<string, { count: number; lines: Set<number> }>();
   const vulnerabilityTypes = summarizeByType(vulnerabilities, byType);
   const guideCategories = summarizeByGuideCategory(vulnerabilities, byGuideCategory);
   const totalVulnerabilities = vulnerabilities.length || toInt(summary.total_vulnerabilities);
@@ -495,12 +457,10 @@ export function buildAnalysisDetailViewModel(response: Dict) {
   for (const vuln of sortedVulnerabilities) {
     const file = String(vuln.file ?? '');
     if (!file) continue;
-    const entry = fileSummary.get(file) ?? { count: 0, severity: 'LOW', lines: new Set<number>() };
+    const entry = fileSummary.get(file) ?? { count: 0, lines: new Set<number>() };
     entry.count += 1;
     const line = toPositiveLine(vuln.line);
     if (line !== null) entry.lines.add(line);
-    const rawSeverity = normalizeSeverity(vuln.severity);
-    if (severityRank(rawSeverity) > severityRank(entry.severity)) entry.severity = rawSeverity;
     fileSummary.set(file, entry);
   }
   const llmReport = typeof analysis.llm_report === 'string' ? analysis.llm_report.trim() : '';
@@ -513,12 +473,9 @@ export function buildAnalysisDetailViewModel(response: Dict) {
     files_analyzed: toInt(analysis.files_analyzed),
     affected_files: fileSummary.size,
     security_score: toInt(score.overall),
-    severity_counts: severityCounts,
     vulnerability_types: vulnerabilityTypes.map((item) => ({ type: item.type, name: item.name, count: item.count })),
     file_list: [...fileSummary.entries()]
       .sort(([fileA, infoA], [fileB, infoB]) => {
-        const severityDiff = severityRank(infoB.severity) - severityRank(infoA.severity);
-        if (severityDiff !== 0) return severityDiff;
         const countDiff = infoB.count - infoA.count;
         if (countDiff !== 0) return countDiff;
         return fileA.localeCompare(fileB);
@@ -531,7 +488,6 @@ export function buildAnalysisDetailViewModel(response: Dict) {
           lines: lineNumbers.length,
           line_numbers: lineNumbers,
           line_summary: formatLineSummary(lineNumbers),
-          level: severityToKoreanLabel(info.severity),
         };
       }),
     call_graph: buildCallGraphView(analysis.call_graph),

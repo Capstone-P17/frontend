@@ -26,15 +26,15 @@ const slides: Slide[] = [
             <b style={{ color: '#FFB4B4' }}>9</b>
           </div>
           <div>
-            <span>위험도</span>
-            <b>HIGH</b>
+            <span>Finding</span>
+            <b>#009</b>
           </div>
         </div>
         {/* 취약점 카드 1 */}
         <div className="mock-vuln-card">
           <div className="mock-vuln-head">
             <b>SQL Injection</b>
-            <span style={{ color: '#FFB4B4' }}>HIGH</span>
+            <span style={{ color: '#FFB4B4' }}>#001</span>
           </div>
           <p>UserRepository.java:42</p>
           <code>executeQuery(&quot;SELECT ...&quot; + userId)</code>
@@ -43,7 +43,7 @@ const slides: Slide[] = [
         <div className="mock-vuln-card" style={{ opacity: 0.75 }}>
           <div className="mock-vuln-head">
             <b>Hardcoded Secret</b>
-            <span style={{ color: '#FDE68A' }}>MEDIUM</span>
+            <span style={{ color: '#FDE68A' }}>#002</span>
           </div>
           <p>application.yml:12</p>
         </div>
