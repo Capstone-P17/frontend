@@ -46,7 +46,7 @@ describe('analysis view model parity', () => {
       count: 3,
     });
     expect(vm.guide_distribution[0].items).toContainEqual({ item: 'SQL 인젝션', raw_item: 'SQL 삽입', count: 2 });
-    expect(vm.vuln_details[0]).toMatchObject({ evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', confidence_reason: '외부 입력이 SQL 실행 API까지 도달합니다.', call_chain: ['Controller', 'DAO'] });
+    expect(vm.vuln_details[0]).toMatchObject({ cwe: 'CWE-89', evidence: 'userId 값이 query에 결합된 뒤 executeQuery로 실행됩니다.', confidence_reason: '외부 입력이 SQL 실행 API까지 도달합니다.', call_chain: ['Controller', 'DAO'] });
     expect(vm.vuln_details[1]).toMatchObject({ description: '취약점 설명이 없습니다.', evidence: '', confidence_reason: '', fix: '취약점에 적합한 보안 패턴을 적용하세요.' });
   });
 

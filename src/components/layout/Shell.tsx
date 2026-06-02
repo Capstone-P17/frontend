@@ -17,6 +17,7 @@ export type SidebarVulnItem = {
   id: string;
   title: string;
   type: string;
+  cwe?: string;
   file: string;
   line: number | null;
   summary: string;

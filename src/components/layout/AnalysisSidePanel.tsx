@@ -131,7 +131,10 @@ export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], select
                         {findingBadgeText(v.id)}
                       </span>
                       <div className="analysis-side-vuln-info">
-                        <span className="analysis-side-vuln-type">{v.title}</span>
+                        <span className="analysis-side-vuln-title-row">
+                          <span className="analysis-side-vuln-type">{v.title}</span>
+                          {v.cwe ? <span className="cwe-badge analysis-side-cwe-badge">{v.cwe}</span> : null}
+                        </span>
                         <span className="analysis-side-vuln-file">{location}</span>
                         {v.summary ? <span className="analysis-side-vuln-summary">{v.summary}</span> : null}
                       </div>

@@ -97,6 +97,7 @@ export function AnalysisClient() {
     id: v.id,
     title: v.title,
     type: v.type,
+    cwe: v.cwe,
     file: v.file,
     line: v.line,
     summary: v.summary,

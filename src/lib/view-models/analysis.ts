@@ -9,6 +9,17 @@ export const TYPE_DISPLAY: Record<string, string> = {
   DANGEROUS_FILE_UPLOAD: 'Dangerous File Upload',
 };
 
+const TYPE_CWE_DISPLAY: Record<string, string> = {
+  SQL_INJECTION: 'CWE-89',
+  XSS: 'CWE-79',
+  HARDCODED_SECRET: 'CWE-798',
+  COMMAND_INJECTION: 'CWE-78',
+  PATH_TRAVERSAL: 'CWE-22',
+  INSECURE_RANDOM: 'CWE-338',
+  WEAK_HASH: 'CWE-327',
+  DANGEROUS_FILE_UPLOAD: 'CWE-434',
+};
+
 const GUIDE_CATEGORY_DISPLAY: Record<string, string> = {
   '입력데이터 검증 및 표현': '입력값 검증',
 };
@@ -64,6 +75,7 @@ export type VulnerabilityFinding = {
   description: string;
   recommendation: string;
   safe_example?: string;
+  cwe?: string;
   confidence_reason?: string;
 
   llm_explanation_status?: LlmExplanationStatus;
@@ -210,6 +222,13 @@ function compactText(value: unknown, fallback = '', maxLength = 140): string {
   const text = String(value ?? fallback).replace(/\s+/g, ' ').trim();
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function normalizeCwe(value: unknown): string {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const match = text.match(/CWE[-_\s]?(\d+)/i);
+  return match ? `CWE-${match[1]}` : text;
 }
 
 function toFindingLlmExplanation(value: unknown): FindingLlmExplanation | null {
@@ -394,7 +413,9 @@ function buildVulnerabilityDetail(vuln: Dict) {
         .filter((item) => item.label)
     : [];
   const recommendation = String(vuln.recommendation ?? '취약점에 적합한 보안 패턴을 적용하세요.');
-  const displayType = vulnerabilityTypeToDisplayName(vuln.type ?? 'UNKNOWN');
+  const rawType = String(vuln.type ?? 'UNKNOWN');
+  const displayType = vulnerabilityTypeToDisplayName(rawType);
+  const cwe = normalizeCwe(vuln.cwe) || TYPE_CWE_DISPLAY[rawType] || '';
   const report = asRecord(vuln.finding_report);
   const reportTitle = compactText(report.title ?? vuln.finding_report_title);
   const reportSummary = compactText(report.summary ?? vuln.finding_report_summary);
@@ -416,6 +437,7 @@ function buildVulnerabilityDetail(vuln: Dict) {
     report_source: reportMetadata.source ? String(reportMetadata.source) as FindingReportSource : null,
     report_generated_at: reportMetadata.generated_at ? String(reportMetadata.generated_at) : null,
     type: displayType,
+    cwe,
     guide_source: String(vuln.guide_source ?? ''),
     guide_category: String(vuln.guide_category ?? ''),
     guide_item: String(vuln.guide_item ?? ''),
