@@ -3,7 +3,7 @@
 import { AlertTriangle, ChevronLeft, ChevronRight, GitBranch, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { ReportDownloadButton } from '@/components/analysis/ReportDownloadButton';
 import { Button } from '@/components/ui/button';
@@ -33,10 +33,28 @@ function findingBadgeText(findingId: string): string {
   return match ? `#${match[1]}` : findingId || 'Finding';
 }
 
+function findingOrder(findingId: string): number {
+  const match = findingId.match(/(\d+)$/);
+  return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
 export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], selectedFindingId }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
+  const sortedVulnList = useMemo(
+    () =>
+      [...vulnList].sort((a, b) => {
+        const byFindingNumber = findingOrder(a.id) - findingOrder(b.id);
+        if (byFindingNumber !== 0) return byFindingNumber;
+
+        const byFile = a.file.localeCompare(b.file);
+        if (byFile !== 0) return byFile;
+
+        return (a.line ?? 0) - (b.line ?? 0);
+      }),
+    [vulnList],
+  );
 
   const logoSrc = mounted && resolvedTheme === 'dark' ? '/logo_dr.png' : '/logo_li.png';
 
@@ -88,14 +106,14 @@ export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], select
         <ReportDownloadButton analysisId={analysisId} className="analysis-side-download" />
 
         {/* Vulnerability list */}
-        {vulnList.length > 0 && (
+        {sortedVulnList.length > 0 && (
           <div className="analysis-side-vuln-section">
             <div className="analysis-side-list-header">
               <span><AlertTriangle size={14} aria-hidden="true" />취약점 목록</span>
-              <span className="analysis-side-count">{vulnList.length}</span>
+              <span className="analysis-side-count">{sortedVulnList.length}</span>
             </div>
             <ul className="analysis-side-vuln-list">
-              {vulnList.map((v) => {
+              {sortedVulnList.map((v) => {
                 const activeFinding = selectedFindingId === v.id;
                 const location = [v.file.split('/').pop() ?? v.file, v.line ? `:${v.line}` : ''].join('');
                 return (
