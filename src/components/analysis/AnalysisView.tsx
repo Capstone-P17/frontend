@@ -16,60 +16,6 @@ type KpiItem = {
 	compact?: boolean;
 };
 
-type StaticGuideItem = {
-	name: string;
-	pages: string;
-	action: string;
-};
-
-type StaticGuideCategory = {
-	category: string;
-	summary: string;
-	items: StaticGuideItem[];
-};
-
-const STATIC_GUIDE_REFERENCE: StaticGuideCategory[] = [
-	{
-		category: "입력값 검증",
-		summary: "외부 입력이 쿼리, 경로, 스크립트, 명령어, 파일 처리에 들어가기 전 허용값 중심으로 검증합니다.",
-		items: [
-			{ name: "SQL 인젝션", pages: "p.178-191", action: "동적 SQL 결합을 제거하고 PreparedStatement·파라미터 바인딩을 적용합니다." },
-			{ name: "경로 조작 및 자원 삽입", pages: "p.192-201", action: "입력 경로를 정규화한 뒤 허용된 base path 내부인지 확인하고 파일명을 allowlist로 제한합니다." },
-			{ name: "크로스사이트 스크립트", pages: "p.202-213", action: "출력 위치별 인코딩을 적용하고 HTML/스크립트가 필요한 값은 허용 태그만 통과시킵니다." },
-			{ name: "운영체제 명령어 삽입", pages: "p.214-222", action: "쉘 문자열 실행을 피하고, 고정 명령과 검증된 인자 배열만 사용합니다." },
-			{ name: "위험한 형식 파일 업로드", pages: "p.223-229", action: "확장자·MIME·매직바이트를 함께 확인하고 업로드 파일은 실행 경로 밖에 저장합니다." },
-			{ name: "신뢰되지 않는 URL 자동접속", pages: "p.230-234", action: "리다이렉트/요청 대상은 도메인 allowlist로 제한하고 내부망 주소 접근을 차단합니다." },
-			{ name: "XQuery/XPath/LDAP 삽입", pages: "p.235-256", action: "질의 문자열 결합을 금지하고 바인딩 API와 특수문자 이스케이프를 사용합니다." },
-			{ name: "CSRF / HTTP 응답분할", pages: "p.257-266", action: "상태 변경 요청에는 CSRF 토큰을 요구하고 헤더 값에는 개행 문자를 허용하지 않습니다." },
-			{ name: "정수·버퍼·포맷 입력 오류", pages: "p.267-290", action: "자료형 범위와 버퍼 길이를 먼저 검증하고 사용자 입력을 포맷 문자열로 직접 사용하지 않습니다." },
-		],
-	},
-	{
-		category: "보안 기능",
-		summary: "인증·인가·암호·난수·비밀값처럼 보안 결정을 담당하는 코드는 안전한 저장/검증/알고리즘을 강제합니다.",
-		items: [
-			{ name: "인증 없는 중요기능 / 부적절한 인가", pages: "p.291-301", action: "서버 측 권한 검사를 기능 진입점마다 수행하고 역할·소유자 기준을 명시합니다." },
-			{ name: "중요 자원 권한 설정", pages: "p.302-306", action: "파일·디렉터리·객체 저장소 권한을 최소 권한으로 고정하고 배포 시 검증합니다." },
-			{ name: "취약한 암호화 알고리즘", pages: "p.307-313", action: "MD5/SHA-1 등 약한 알고리즘을 제거하고 용도에 맞는 안전한 알고리즘으로 교체합니다." },
-			{ name: "중요정보 평문 저장/전송", pages: "p.314-326", action: "저장 전 암호화와 전송 구간 TLS를 적용하고 로그·응답에 민감정보를 남기지 않습니다." },
-			{ name: "하드코드된 비밀번호/암호화 키", pages: "p.327-347", action: "소스 내 비밀값을 제거하고 환경 변수 또는 시크릿 저장소에서 주입합니다." },
-			{ name: "적절하지 않은 난수값", pages: "p.336-341", action: "토큰·키·인증값에는 일반 Random 대신 보안 난수 생성기를 사용합니다." },
-			{ name: "솔트 없는 일방향 해시", pages: "p.361-364", action: "비밀번호에는 salt와 반복 비용이 있는 전용 KDF를 적용합니다." },
-		],
-	},
-	{
-		category: "기타 구현 보안",
-		summary: "상태 경쟁, 에러 처리, 코드 오류, 캡슐화, API 오용은 장애와 정보노출을 막는 방어 코딩 기준입니다.",
-		items: [
-			{ name: "시간 및 상태", pages: "p.377-389", action: "검사와 사용 사이 상태가 바뀌지 않도록 잠금·원자적 연산·타임아웃을 적용합니다." },
-			{ name: "에러 처리", pages: "p.390-402", action: "사용자에게 내부 오류 정보를 노출하지 않고 예외별 복구/차단 흐름을 명확히 둡니다." },
-			{ name: "코드 오류", pages: "p.403-432", action: "Null, 자원 해제, 초기화 상태를 명시적으로 검증하고 안전한 finally/try-with-resources 패턴을 씁니다." },
-			{ name: "캡슐화", pages: "p.433-459", action: "디버그 코드와 내부 데이터를 제거하고 private 배열/상태가 외부로 직접 노출되지 않게 복사합니다." },
-			{ name: "API 오용", pages: "p.460-471", action: "금지 API 사용을 대체 API로 바꾸고 보안 결정에 DNS lookup 등 불안정한 값을 사용하지 않습니다." },
-		],
-	},
-];
-
 function reportStatusText(status: string): string {
 	const labels: Record<string, string> = {
 		generated: "생성됨",
@@ -245,46 +191,6 @@ function GuideDistributionCard({
 	);
 }
 
-function StaticGuideReferenceCard() {
-	const totalItems = STATIC_GUIDE_REFERENCE.reduce((sum, category) => sum + category.items.length, 0);
-
-	return (
-		<section className="static-guide-reference" aria-label="정적 보안약점 조치 가이드">
-			<div className="static-guide-reference-header">
-				<div>
-					<Badge className="dashboard-eyebrow" variant="outline">Security Guide</Badge>
-					<h2>보안약점 조치 가이드</h2>
-					<p>분석 결과와 별개로 바로 조회할 수 있는 2019.6 개정 소프트웨어 보안약점 진단가이드 기반 조치 요약입니다.</p>
-				</div>
-				<Badge variant="outline">{totalItems}개 항목</Badge>
-			</div>
-
-			<div className="static-guide-reference-grid">
-				{STATIC_GUIDE_REFERENCE.map((category) => (
-					<div className="static-guide-category" key={category.category}>
-						<div className="static-guide-category-title">
-							<span>{category.category}</span>
-							<b>{category.items.length}개 항목</b>
-						</div>
-						<p>{category.summary}</p>
-						<div className="static-guide-item-list">
-							{category.items.map((item) => (
-								<article className="static-guide-item" key={`${category.category}-${item.name}`}>
-									<div>
-										<strong>{item.name}</strong>
-										<span>{item.pages}</span>
-									</div>
-									<p>{item.action}</p>
-								</article>
-							))}
-						</div>
-					</div>
-				))}
-			</div>
-		</section>
-	);
-}
-
 function FileListCard({ files }: { files: FileSummaryItem[] }) {
 	return (
 		<Card className="dashboard-card">
@@ -332,7 +238,6 @@ function OverviewPage({ vm, repo, analysisId }: { vm: AnalysisDetailViewModel; r
 
 	return (
 		<>
-			<StaticGuideReferenceCard />
 			<ResultHero repo={repo} analysisId={analysisId} score={vm.security_score} />
 			<KpiGrid
 				items={[
