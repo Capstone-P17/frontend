@@ -56,6 +56,14 @@ function sanitizeFindingMarkdownForDisplay(markdown: string): string {
 		"C" + "VSS\\s*벡터",
 		"신뢰도",
 		"confidence",
+		"검증\\s*기준",
+		"검증기준",
+		"검증\\s*결과",
+		"런타임\\s*검증",
+		"실제\\s*공격\\s*수행",
+		"수행\\s*여부",
+		"validation",
+		"criteria",
 	].join("|");
 	const metadataLinePattern = new RegExp(
 		`^\\s*(?:[-*]\\s*)?(?:\\*\\*)?(?:${hiddenMetadataTerms})(?:\\*\\*)?\\s*[:：|]`,
@@ -272,17 +280,14 @@ ${detail.evidence || "저장된 근거가 없습니다."}
 ## 호출 경로
 ${callPath}
 
-# 공격 경로 분석
-## 판단 근거
-${detail.confidence_reason || "저장된 신뢰도 판단 근거가 제한적입니다."}
-
+# 영향
 ## 악용 가능성
 저장된 정적 분석 근거와 코드 맥락을 기준으로 우선 확인이 필요합니다.
 
-## 영향
+## 영향 범위
 ${detail.description}
 
-# 수정 방법
+# 수정 방향
 ${detail.recommendation}
 
 # 수정 예시
