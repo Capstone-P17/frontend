@@ -115,7 +115,7 @@ export function AnalysisSidePanel({ repo = '', analysisId, vulnList = [], select
                       <div className="analysis-side-vuln-info">
                         <span className="analysis-side-vuln-type">{v.title}</span>
                         <span className="analysis-side-vuln-file">{location}</span>
-                        {v.summary ? <span className="analysis-side-vuln-file">{v.summary}</span> : null}
+                        {v.summary ? <span className="analysis-side-vuln-summary">{v.summary}</span> : null}
                       </div>
                     </Link>
                   </li>

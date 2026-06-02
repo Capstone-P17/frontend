@@ -10,26 +10,11 @@ type Props = {
 	jobId: string;
 };
 
-const benchmarkScopeItems = [
-	{
-		label: "저장소 구조 파악",
-		text: "Java 소스 파일을 수집하고 분석 가능한 파일 경로와 호출 그래프 후보를 정리합니다.",
-	},
-	{
-		label: "취약 흐름 추적",
-		text: "입력값, 민감 API, sink 호출부를 연결해 실제 코드 위치 중심으로 finding을 구성합니다.",
-	},
-	{
-		label: "상세 리포트 생성",
-		text: "각 finding별 근거, 코드 맥락, 수정 방향을 Markdown 리포트로 정리합니다.",
-	},
-];
-
 const scanSteps = [
 	{ phase: "cloning", label: "저장소 복제" },
 	{ phase: "indexing", label: "Java 파일 수집" },
 	{ phase: "static_analysis", label: "정적 분석" },
-	{ phase: "finding_validation", label: "검증/매핑" },
+	{ phase: "finding_validation", label: "가이드 매핑" },
 	{ phase: "report_generation", label: "리포트 생성" },
 	{ phase: "saving", label: "결과 저장" },
 ];
@@ -40,7 +25,7 @@ const statusLabels: Record<string, string> = {
 	cloning: "저장소 복제",
 	indexing: "Java 파일 수집",
 	static_analysis: "정적 분석",
-	finding_validation: "검증 및 매핑",
+	finding_validation: "가이드 매핑",
 	report_generation: "상세 리포트 생성",
 	summary_generation: "요약 리포트 생성",
 	saving: "결과 저장",
@@ -54,47 +39,13 @@ const fallbackMessages: Record<string, string> = {
 	cloning: "GitHub 저장소를 내려받고 분석 대상을 준비하고 있습니다.",
 	indexing: "Java 파일과 호출 그래프 후보를 수집하고 있습니다.",
 	static_analysis: "정적 분석기로 취약 후보와 코드 위치를 탐지하고 있습니다.",
-	finding_validation: "탐지 결과를 보안 가이드와 매핑하고 finding 맥락을 정리하고 있습니다.",
+	finding_validation: "탐지 결과를 보안 가이드 항목과 연결하고 finding 맥락을 정리하고 있습니다.",
 	report_generation: "finding별 상세 리포트와 수정 방향을 생성하고 있습니다.",
 	summary_generation: "전체 분석 요약 리포트를 정리하고 있습니다.",
 	saving: "분석 결과를 저장하고 있습니다.",
 	succeeded: "결과 페이지로 이동 중입니다.",
 	failed: "분석 작업이 실패했습니다.",
 };
-
-export function BenchmarkScopeNotice() {
-	const [activeIndex, setActiveIndex] = useState(0);
-	const activeItem = benchmarkScopeItems[activeIndex];
-
-	useEffect(() => {
-		const interval = window.setInterval(() => {
-			setActiveIndex((current) => (current + 1) % benchmarkScopeItems.length);
-		}, 3200);
-
-		return () => window.clearInterval(interval);
-	}, []);
-
-	return (
-		<div className="loading-benchmark-card" aria-label="분석 진행 안내">
-			<div className="loading-benchmark-header">
-				<span>분석 파이프라인</span>
-				<b>Finding-first</b>
-			</div>
-			<div className="loading-benchmark-slide" aria-live="polite">
-				<strong>{activeItem.label}</strong>
-				<p>{activeItem.text}</p>
-			</div>
-			<div className="loading-benchmark-dots" aria-hidden="true">
-				{benchmarkScopeItems.map((item, index) => (
-					<span
-						key={item.label}
-						className={index === activeIndex ? "active" : ""}
-					/>
-				))}
-			</div>
-		</div>
-	);
-}
 
 export function LoadingScanPanel({
 	repo,
@@ -175,7 +126,6 @@ export function LoadingScanPanel({
 				</div>
 			</div>
 
-			{!completed ? <BenchmarkScopeNotice /> : null}
 		</section>
 	);
 }
